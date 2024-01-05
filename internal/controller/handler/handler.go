@@ -64,12 +64,12 @@ func (rt *Router) ShortResolveURL(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		longUrl, err := rt.urls.Resolve(r.Context(), uri[1])
+		longURL, err := rt.urls.Resolve(r.Context(), uri[1])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		http.Redirect(w, r, longUrl, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, longURL, http.StatusTemporaryRedirect)
 
 	default:
 		http.Error(w, "bad request", http.StatusBadRequest)

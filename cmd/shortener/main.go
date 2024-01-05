@@ -21,7 +21,7 @@ func main() {
 	a := starter.NewApp(urlst)
 	urls := url.NewURLs(urlst)
 	h := handler.NewRouter(urls)
-	srv := server.NewServer(":8000", h)
+	srv := server.NewServer(":8080", h)
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
