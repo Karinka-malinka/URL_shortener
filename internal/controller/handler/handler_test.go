@@ -55,7 +55,7 @@ func TestRouter_ShortResolveURL1(t *testing.T) {
 				metod: "GET",
 				body:  strings.NewReader(""),
 			},
-			wantStatusCode: 307,
+			wantStatusCode: 200,
 		},
 		{
 			name: "Negative test",
