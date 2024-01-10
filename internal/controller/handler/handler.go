@@ -3,76 +3,72 @@ package handler
 import (
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/URL_shortener/internal/app/url"
+	"github.com/labstack/echo/v4"
 )
 
 type Router struct {
-	*http.ServeMux
+	*echo.Echo
 	urls *url.URLs
 }
 
 func NewRouter(urls *url.URLs) *Router {
+
+	e := echo.New()
+
 	r := &Router{
-		ServeMux: http.NewServeMux(),
-		urls:     urls,
+		Echo: e,
+		urls: urls,
 	}
-	r.HandleFunc("/", r.ShortResolveURL)
+	e.POST("/", r.ShortURL)
+	e.GET("/:id", r.ResolveURL)
 
 	return r
 }
 
-func (rt *Router) ShortResolveURL(w http.ResponseWriter, r *http.Request) {
+func (rt *Router) ShortURL(c echo.Context) error {
 
-	switch r.Method {
-	case http.MethodPost:
+	rBody := c.Request().Body
 
-		defer r.Body.Close()
+	defer c.Request().Body.Close()
 
-		if r.Body == http.NoBody {
-			http.Error(w, "bad request", http.StatusBadRequest)
-			return
-		}
-
-		body, err := io.ReadAll(r.Body)
-
-		if err != nil {
-			http.Error(w, err.Error(), 400)
-			return
-		}
-
-		burl := url.URL{
-			Long: string(body),
-		}
-
-		nburl, err := rt.urls.Shortening(r.Context(), burl)
-		if err != nil {
-			http.Error(w, "error url shortening", http.StatusBadRequest)
-		}
-		urlShort := "http://" + r.Host + "/" + nburl.Short
-
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(urlShort))
-
-	case http.MethodGet:
-
-		uri := strings.Split(r.RequestURI, "/")
-		if len(uri) < 2 {
-			http.Error(w, "bad request", http.StatusBadRequest)
-			return
-		}
-
-		longURL, err := rt.urls.Resolve(r.Context(), uri[1])
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
-
-		http.Redirect(w, r, longURL, http.StatusTemporaryRedirect)
-
-	default:
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
+	if rBody == http.NoBody {
+		return echo.ErrBadRequest
 	}
+
+	body, err := io.ReadAll(rBody)
+
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	burl := url.URL{
+		Long: string(body),
+	}
+
+	nburl, err := rt.urls.Shortening(c.Request().Context(), burl)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	urlShort := "http://" + c.Request().Host + "/" + nburl.Short
+
+	c.String(http.StatusCreated, urlShort)
+	return nil
+}
+
+func (rt *Router) ResolveURL(c echo.Context) error {
+
+	//uri := strings.Split(r.RequestURI, "/")
+	uri := c.Param("id")
+
+	longURL, err := rt.urls.Resolve(c.Request().Context(), uri)
+
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	c.Redirect(http.StatusTemporaryRedirect, longURL)
+	return nil
 }

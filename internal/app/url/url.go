@@ -13,6 +13,7 @@ type URL struct {
 	Long  string
 }
 
+// инверсия зависимостей к базе данных
 type URLStore interface {
 	Shortening(ctx context.Context, adr URL) error
 	Resolve(ctx context.Context, shortURL string) (string, error)

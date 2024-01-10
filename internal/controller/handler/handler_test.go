@@ -47,7 +47,7 @@ func TestRouter_ShortResolveURL1(t *testing.T) {
 				metod: "POST",
 				body:  strings.NewReader(""),
 			},
-			wantStatusCode: 400,
+			wantStatusCode: 405,
 		},
 		{
 			name: "GET positive test",
@@ -63,7 +63,7 @@ func TestRouter_ShortResolveURL1(t *testing.T) {
 				metod: "PUT",
 				body:  strings.NewReader(""),
 			},
-			wantStatusCode: 400,
+			wantStatusCode: 405,
 		},
 	}
 

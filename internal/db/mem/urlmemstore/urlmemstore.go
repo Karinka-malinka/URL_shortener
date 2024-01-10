@@ -8,6 +8,7 @@ import (
 	"github.com/URL_shortener/internal/app/url"
 )
 
+// пр​оверка на соответствие интерфейсу
 var _ url.URLStore = &URLs{}
 
 type URLs struct {
