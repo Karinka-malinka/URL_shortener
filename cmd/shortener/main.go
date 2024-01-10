@@ -8,20 +8,29 @@ import (
 
 	"github.com/URL_shortener/internal/app/starter"
 	"github.com/URL_shortener/internal/app/url"
+	"github.com/URL_shortener/internal/config"
 	"github.com/URL_shortener/internal/controller/handler"
 	"github.com/URL_shortener/internal/controller/server"
 	"github.com/URL_shortener/internal/db/mem/urlmemstore"
 )
 
+var cfg *config.ConfigData
+
+func init() {
+	cfg = config.NewConfig()
+}
+
 func main() {
+
+	parseFlags(cfg)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 
 	urlst := urlmemstore.NewURLs()
 	a := starter.NewApp(urlst)
 	urls := url.NewURLs(urlst)
-	h := handler.NewRouter(urls)
-	srv := server.NewServer(":8080", h)
+	h := handler.NewRouter(urls, cfg)
+	srv := server.NewServer(cfg.RunAddr, h)
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)

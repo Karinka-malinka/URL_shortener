@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/URL_shortener/internal/app/url"
+	"github.com/URL_shortener/internal/config"
 	"github.com/URL_shortener/internal/db/mem/urlmemstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,12 +16,15 @@ import (
 
 func TestRouter_ShortResolveURL1(t *testing.T) {
 
+	cfg := config.NewConfig()
+
 	urlst := urlmemstore.NewURLs()
 	urls := url.NewURLs(urlst)
-	rt := NewRouter(urls)
+	rt := NewRouter(urls, cfg)
 	hts := httptest.NewServer(rt)
 	cli := hts.Client()
 
+	cfg.BaseShortAddr = hts.URL
 	requeststr := hts.URL + "/"
 
 	type request struct {

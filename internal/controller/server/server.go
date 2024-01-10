@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -38,5 +39,6 @@ func (s *Server) Stop() {
 
 func (s *Server) Start(urls *url.URLs) {
 	s.urls = urls
+	fmt.Println("server started: ", s.srv.Addr)
 	go s.srv.ListenAndServe()
 }
