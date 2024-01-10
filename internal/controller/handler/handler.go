@@ -29,33 +29,46 @@ func NewRouter(urls *url.URLs) *Router {
 
 func (rt *Router) ShortURL(c echo.Context) error {
 
-	rBody := c.Request().Body
+	ca := make(chan string, 1)
+	r := c.Request()
 
-	defer c.Request().Body.Close()
+	rBody := r.Body
 
-	if rBody == http.NoBody {
-		return echo.ErrBadRequest
+	defer rBody.Close()
+
+	go func() error {
+
+		if rBody == http.NoBody {
+			return echo.ErrBadRequest
+		}
+
+		body, err := io.ReadAll(rBody)
+
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+
+		burl := url.URL{
+			Long: string(body),
+		}
+
+		nburl, err := rt.urls.Shortening(c.Request().Context(), burl)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+
+		urlShort := "http://" + c.Request().Host + "/" + nburl.Short
+
+		ca <- urlShort
+		return nil
+	}()
+
+	select {
+	case result := <-ca:
+		return c.String(http.StatusCreated, result)
+	case <-c.Request().Context().Done():
+		return nil
 	}
-
-	body, err := io.ReadAll(rBody)
-
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-
-	burl := url.URL{
-		Long: string(body),
-	}
-
-	nburl, err := rt.urls.Shortening(c.Request().Context(), burl)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-
-	urlShort := "http://" + c.Request().Host + "/" + nburl.Short
-
-	c.String(http.StatusCreated, urlShort)
-	return nil
 }
 
 func (rt *Router) ResolveURL(c echo.Context) error {
