@@ -33,13 +33,19 @@ func (u *URLs) Shortening(ctx context.Context, adr URL) (*URL, error) {
 
 	// получаем короткий url как хэш текущего времени
 	hd := hashids.NewData()
-	h, _ := hashids.NewWithData(hd)
+	h, err := hashids.NewWithData(hd)
+	if err != nil {
+		return nil, err
+	}
 	now := time.Now()
-	urlID, _ := h.Encode([]int{int(now.Unix())})
+	urlID, err := h.Encode([]int{int(now.Unix())})
+	if err != nil {
+		return nil, err
+	}
 
 	adr.Short = urlID
 
-	err := u.adrstore.Shortening(ctx, adr)
+	err = u.adrstore.Shortening(ctx, adr)
 	if err != nil {
 		return nil, fmt.Errorf("create short url: %w", err)
 	}

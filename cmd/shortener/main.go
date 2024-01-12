@@ -6,21 +6,17 @@ import (
 	"os/signal"
 	"sync"
 
+	"github.com/URL_shortener/cmd/config"
 	"github.com/URL_shortener/internal/app/starter"
 	"github.com/URL_shortener/internal/app/url"
-	"github.com/URL_shortener/internal/config"
 	"github.com/URL_shortener/internal/controller/handler"
 	"github.com/URL_shortener/internal/controller/server"
 	"github.com/URL_shortener/internal/db/mem/urlmemstore"
 )
 
-var cfg *config.ConfigData
-
-func init() {
-	cfg = config.NewConfig()
-}
-
 func main() {
+
+	cfg := config.NewConfig()
 
 	parseFlags(cfg)
 

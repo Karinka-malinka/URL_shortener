@@ -4,8 +4,8 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/URL_shortener/cmd/config"
 	"github.com/URL_shortener/internal/app/url"
-	"github.com/URL_shortener/internal/config"
 	"github.com/labstack/echo/v4"
 )
 

@@ -4,7 +4,7 @@ import (
 	"flag"
 	"os"
 
-	"github.com/URL_shortener/internal/config"
+	"github.com/URL_shortener/cmd/config"
 )
 
 func parseFlags(cfg *config.ConfigData) {
