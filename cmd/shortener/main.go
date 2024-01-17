@@ -12,9 +12,12 @@ import (
 	"github.com/URL_shortener/internal/controller/handler"
 	"github.com/URL_shortener/internal/controller/server"
 	"github.com/URL_shortener/internal/db/mem/urlmemstore"
+	"github.com/URL_shortener/internal/logger"
 )
 
 func main() {
+
+	logger.Initialize()
 
 	cfg := config.NewConfig()
 

@@ -6,7 +6,9 @@ import (
 
 	"github.com/URL_shortener/cmd/config"
 	"github.com/URL_shortener/internal/app/url"
+	"github.com/URL_shortener/internal/logger"
 	"github.com/labstack/echo/v4"
+	middleware "github.com/labstack/echo/v4/middleware"
 )
 
 type Router struct {
@@ -24,6 +26,16 @@ func NewRouter(urls *url.URLs, cfg *config.ConfigData) *Router {
 		urls: urls,
 		cfg:  cfg,
 	}
+
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogURI:          true,
+		LogStatus:       true,
+		LogMethod:       true,
+		LogResponseSize: true,
+		LogLatency:      true,
+		LogValuesFunc:   logger.RequestLogger,
+	}))
+
 	e.POST("/", r.ShortURL)
 	e.GET("/:id", r.ResolveURL)
 
