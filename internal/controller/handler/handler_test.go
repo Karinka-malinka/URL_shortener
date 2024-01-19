@@ -91,6 +91,7 @@ func TestRouter_ShortResolveURL1(t *testing.T) {
 
 				requeststr = string(rbody)
 			}
+
 		})
 	}
 }
