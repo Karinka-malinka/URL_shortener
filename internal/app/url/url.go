@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/URL_shortener/internal/logger"
-	"github.com/sirupsen/logrus"
 	hashids "github.com/speps/go-hashids"
 )
 
@@ -40,7 +38,7 @@ func (u *URLs) Shortening(ctx context.Context, adr URL) (*URL, error) {
 		return nil, err
 	}
 	now := time.Now()
-	urlID, err := h.Encode([]int{int(now.Unix())})
+	urlID, err := h.Encode([]int{int(now.UnixNano())})
 	if err != nil {
 		return nil, err
 	}
@@ -51,10 +49,6 @@ func (u *URLs) Shortening(ctx context.Context, adr URL) (*URL, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create short url: %w", err)
 	}
-	logger.Log.WithFields(logrus.Fields{
-		"short_url":    urlID,
-		"original_url": adr.Long,
-	}).Info("Add")
 
 	return &adr, nil
 }
