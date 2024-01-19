@@ -162,6 +162,8 @@ func TestRouter_ShortURLJSON(t *testing.T) {
 				require.NoError(t, err)
 			}
 
+			defer resp.Body.Close()
+
 			assert.Equal(t, tt.wantStatusCode, resp.StatusCode)
 			assert.Equal(t, tt.contentType, resp.Header.Get("Content-Type"))
 		})
