@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 
@@ -38,6 +39,7 @@ func NewRouter(urls *url.URLs, cfg *config.ConfigData) *Router {
 
 	e.POST("/", r.ShortURL)
 	e.GET("/:id", r.ResolveURL)
+	e.POST("/api/shorten", r.ShortURLJSON)
 
 	return r
 }
@@ -81,6 +83,57 @@ func (rt *Router) ShortURL(c echo.Context) error {
 	select {
 	case result := <-ca:
 		return c.String(http.StatusCreated, result)
+	case <-c.Request().Context().Done():
+		return nil
+	}
+}
+
+func (rt *Router) ShortURLJSON(c echo.Context) error {
+
+	ca := make(chan string, 1)
+	r := c.Request()
+
+	rBody := r.Body
+
+	defer rBody.Close()
+
+	if rBody == http.NoBody {
+		return echo.NewHTTPError(http.StatusBadRequest, "No body")
+	}
+
+	go func() error {
+
+		body, err := io.ReadAll(rBody)
+
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+
+		burl := url.URL{}
+
+		if err = json.Unmarshal(body, &burl); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+
+		nburl, err := rt.urls.Shortening(c.Request().Context(), burl)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+
+		urlShort := rt.cfg.BaseShortAddr + "/" + nburl.Short
+
+		ca <- urlShort
+		return nil
+	}()
+
+	select {
+	case result := <-ca:
+
+		data := map[string]interface{}{
+			"result": result,
+		}
+
+		return c.JSON(http.StatusCreated, data)
 	case <-c.Request().Context().Done():
 		return nil
 	}

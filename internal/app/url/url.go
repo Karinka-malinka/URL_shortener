@@ -9,8 +9,8 @@ import (
 )
 
 type URL struct {
-	Short string
-	Long  string
+	Short string `json:"short_url"`
+	Long  string `json:"url"`
 }
 
 // инверсия зависимостей к базе данных
