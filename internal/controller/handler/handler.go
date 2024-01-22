@@ -135,13 +135,13 @@ func (rt *Router) ShortURLJSON(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 
-		original_URL := inputData["url"]
-		if original_URL == "" {
+		originalURL := inputData["url"]
+		if originalURL == "" {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 
 		burl := url.URL{
-			Long: original_URL,
+			Long: originalURL,
 		}
 
 		nburl, err := rt.urls.Shortening(c.Request().Context(), burl)

@@ -47,7 +47,7 @@ func (u *URLs) Shortening(ctx context.Context, adr URL) (*URL, error) {
 	*/
 
 	adr.UUID = strconv.Itoa(u.adrstore.CurrentUUID() + 1)
-	adr.Short = generateShortUrl()
+	adr.Short = generateShortURL()
 
 	err := u.adrstore.Shortening(ctx, adr)
 	if err != nil {
@@ -68,18 +68,18 @@ func (u *URLs) Resolve(ctx context.Context, shortURL string) (string, error) {
 	return longURL, nil
 }
 
-func generateShortUrl() string {
+func generateShortURL() string {
 
-	const shortUrlLength = 8
+	const shortURLLength = 8
 
 	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-	shortUrl := make([]byte, shortUrlLength)
+	shortURL := make([]byte, shortURLLength)
 
-	for i := range shortUrl {
-		shortUrl[i] = letters[rand.Intn(len(letters))]
+	for i := range shortURL {
+		shortURL[i] = letters[rand.Intn(len(letters))]
 	}
 
-	return string(shortUrl)
+	return string(shortURL)
 
 }
