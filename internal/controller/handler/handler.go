@@ -130,14 +130,13 @@ func (rt *Router) ShortURLJSON(c echo.Context) error {
 		}
 
 		var inputData map[string]string
-		var originalURL string
 
 		if err = json.Unmarshal(body, &inputData); err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 
-		originalURL = inputData["url"]
-		if originalURL == "" {
+		originalURL := inputData["url"]
+		if len(originalURL) == 0 {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 
