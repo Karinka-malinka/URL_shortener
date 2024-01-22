@@ -3,20 +3,21 @@ package url
 import (
 	"context"
 	"fmt"
-	"time"
-
-	hashids "github.com/speps/go-hashids"
+	"math/rand"
+	"strconv"
 )
 
 type URL struct {
+	UUID  string `json:"uuid"`
 	Short string `json:"short_url"`
-	Long  string `json:"url"`
+	Long  string `json:"original_url"`
 }
 
 // инверсия зависимостей к базе данных
 type URLStore interface {
 	Shortening(ctx context.Context, adr URL) error
 	Resolve(ctx context.Context, shortURL string) (string, error)
+	CurrentUUID() int
 }
 
 type URLs struct {
@@ -32,20 +33,23 @@ func NewURLs(adrstore URLStore) *URLs {
 func (u *URLs) Shortening(ctx context.Context, adr URL) (*URL, error) {
 
 	// получаем короткий url как хэш текущего времени
-	hd := hashids.NewData()
-	h, err := hashids.NewWithData(hd)
-	if err != nil {
-		return nil, err
-	}
-	now := time.Now()
-	urlID, err := h.Encode([]int{int(now.UnixNano())})
-	if err != nil {
-		return nil, err
-	}
+	/*
+		hd := hashids.NewData()
+		h, err := hashids.NewWithData(hd)
+		if err != nil {
+			return nil, err
+		}
+		now := time.Now()
+		urlID, err := h.Encode([]int{int(now.UnixNano())})
+		if err != nil {
+			return nil, err
+		}
+	*/
 
-	adr.Short = urlID
+	adr.UUID = strconv.Itoa(u.adrstore.CurrentUUID() + 1)
+	adr.Short = generateShortUrl()
 
-	err = u.adrstore.Shortening(ctx, adr)
+	err := u.adrstore.Shortening(ctx, adr)
 	if err != nil {
 		return nil, fmt.Errorf("create short url: %w", err)
 	}
@@ -62,4 +66,20 @@ func (u *URLs) Resolve(ctx context.Context, shortURL string) (string, error) {
 		return "", fmt.Errorf("empty long url: %w", err)
 	}
 	return longURL, nil
+}
+
+func generateShortUrl() string {
+
+	const shortUrlLength = 8
+
+	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+	shortUrl := make([]byte, shortUrlLength)
+
+	for i := range shortUrl {
+		shortUrl[i] = letters[rand.Intn(len(letters))]
+	}
+
+	return string(shortUrl)
+
 }

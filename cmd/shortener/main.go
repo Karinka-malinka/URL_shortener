@@ -11,7 +11,7 @@ import (
 	"github.com/URL_shortener/internal/app/url"
 	"github.com/URL_shortener/internal/controller/handler"
 	"github.com/URL_shortener/internal/controller/server"
-	"github.com/URL_shortener/internal/db/mem/urlmemstore"
+	"github.com/URL_shortener/internal/db/file/urlfilestore"
 	"github.com/URL_shortener/internal/logger"
 )
 
@@ -25,7 +25,10 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 
-	urlst := urlmemstore.NewURLs()
+	urlst, err := urlfilestore.NewFileURLs(cfg.FileStoragePath)
+	if err != nil {
+		logger.Log.Fatal(err.Error())
+	}
 	a := starter.NewApp(urlst)
 	urls := url.NewURLs(urlst)
 	h := handler.NewRouter(urls, cfg)

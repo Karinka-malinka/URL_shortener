@@ -9,7 +9,7 @@ import (
 )
 
 // пр​оверка на соответствие интерфейсу
-var _ url.URLStore = &URLs{}
+//var _ url.URLStore = &URLs{}
 
 type URLs struct {
 	sync.Mutex
@@ -50,4 +50,8 @@ func (adr *URLs) Resolve(ctx context.Context, shortURL string) (string, error) {
 		return u, nil
 	}
 	return "", sql.ErrNoRows
+}
+
+func (adr *URLs) CurrentUUID() int {
+	return 0
 }

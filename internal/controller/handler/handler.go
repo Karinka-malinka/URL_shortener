@@ -129,10 +129,19 @@ func (rt *Router) ShortURLJSON(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 
-		burl := url.URL{}
+		var inputData map[string]string
 
-		if err = json.Unmarshal(body, &burl); err != nil {
+		if err = json.Unmarshal(body, &inputData); err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+
+		original_URL := inputData["url"]
+		if original_URL == "" {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+
+		burl := url.URL{
+			Long: original_URL,
 		}
 
 		nburl, err := rt.urls.Shortening(c.Request().Context(), burl)
