@@ -136,23 +136,25 @@ func (rt *Router) ShortURLJSON(c echo.Context) error {
 		}
 
 		originalURL := inputData["url"]
-		if len(originalURL) == 0 {
-			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		if originalURL != "" {
+
+			burl := url.URL{
+				Long: originalURL,
+			}
+
+			nburl, err := rt.urls.Shortening(c.Request().Context(), burl)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+			}
+
+			urlShort := rt.cfg.BaseShortAddr + "/" + nburl.Short
+
+			ca <- urlShort
+			return nil
 		}
 
-		burl := url.URL{
-			Long: originalURL,
-		}
+		return echo.NewHTTPError(http.StatusBadRequest, "no url")
 
-		nburl, err := rt.urls.Shortening(c.Request().Context(), burl)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-		}
-
-		urlShort := rt.cfg.BaseShortAddr + "/" + nburl.Short
-
-		ca <- urlShort
-		return nil
 	}()
 
 	select {
