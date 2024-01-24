@@ -5,13 +5,16 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"os"
 	"sync"
+	"sync/atomic"
 
 	"github.com/URL_shortener/internal/app/url"
 )
 
 var _ url.URLStore = &fileURLs{}
+var currentUUID atomic.Uint32
 
 type fileURLs struct {
 	sync.Mutex
@@ -41,6 +44,7 @@ func NewFileURLs(filename string) (*fileURLs, error) {
 		}
 
 		m[URLData.Short] = URLData.Long
+		currentUUID.Add(1)
 	}
 
 	return &fileURLs{file: file, m: m}, nil
@@ -92,6 +96,9 @@ func (f *fileURLs) Resolve(ctx context.Context, shortURL string) (string, error)
 	return "", sql.ErrNoRows
 }
 
-func (f *fileURLs) CurrentUUID() int {
-	return len(f.m)
+func (f *fileURLs) CurrentUUID() string {
+
+	currentUUID.Add(1)
+
+	return fmt.Sprintf("%d", currentUUID.Load())
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"strconv"
 )
 
 type URL struct {
@@ -17,7 +16,7 @@ type URL struct {
 type URLStore interface {
 	Shortening(ctx context.Context, adr URL) error
 	Resolve(ctx context.Context, shortURL string) (string, error)
-	CurrentUUID() int
+	CurrentUUID() string
 }
 
 type URLs struct {
@@ -32,21 +31,7 @@ func NewURLs(adrstore URLStore) *URLs {
 
 func (u *URLs) Shortening(ctx context.Context, adr URL) (*URL, error) {
 
-	// получаем короткий url как хэш текущего времени
-	/*
-		hd := hashids.NewData()
-		h, err := hashids.NewWithData(hd)
-		if err != nil {
-			return nil, err
-		}
-		now := time.Now()
-		urlID, err := h.Encode([]int{int(now.UnixNano())})
-		if err != nil {
-			return nil, err
-		}
-	*/
-
-	adr.UUID = strconv.Itoa(u.adrstore.CurrentUUID() + 1)
+	adr.UUID = u.adrstore.CurrentUUID()
 	adr.Short = generateShortURL()
 
 	err := u.adrstore.Shortening(ctx, adr)

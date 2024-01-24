@@ -52,6 +52,6 @@ func (adr *URLs) Resolve(ctx context.Context, shortURL string) (string, error) {
 	return "", sql.ErrNoRows
 }
 
-func (adr *URLs) CurrentUUID() int {
-	return 0
+func (adr *URLs) CurrentUUID() string {
+	return ""
 }

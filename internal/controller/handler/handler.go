@@ -38,23 +38,6 @@ func NewRouter(urls *url.URLs, cfg *config.ConfigData) *Router {
 	}))
 
 	e.Use(middleware.Decompress())
-	/*
-		e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
-			Skipper: func(c echo.Context) bool {
-				contentType := [...]string{
-					"application/json",
-					"text/html",
-				}
-				ch := c.Response().Header().Get("Content-Type")
-				for _, ct := range contentType {
-					if strings.Contains(ch, ct) {
-						return false
-					}
-				}
-				return true
-			},
-		}))
-	*/
 	e.Use(middleware.Gzip())
 
 	e.POST("/", r.ShortURL)
@@ -163,7 +146,7 @@ func (rt *Router) ShortURLJSON(c echo.Context) error {
 		data := map[string]interface{}{
 			"result": result,
 		}
-		//c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSONCharsetUTF8)
+
 		return c.JSON(http.StatusCreated, data)
 	case <-c.Request().Context().Done():
 		return nil
@@ -172,7 +155,6 @@ func (rt *Router) ShortURLJSON(c echo.Context) error {
 
 func (rt *Router) ResolveURL(c echo.Context) error {
 
-	//uri := strings.Split(r.RequestURI, "/")
 	uri := c.Param("id")
 
 	longURL, err := rt.urls.Resolve(c.Request().Context(), uri)
