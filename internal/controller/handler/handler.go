@@ -157,12 +157,12 @@ func (rt *Router) ResolveURL(c echo.Context) error {
 
 	uri := c.Param("id")
 
-	longURL, err := rt.urls.Resolve(c.Request().Context(), uri)
+	strURL, err := rt.urls.Resolve(c.Request().Context(), uri)
 
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	c.Redirect(http.StatusTemporaryRedirect, longURL)
+	c.Redirect(http.StatusTemporaryRedirect, strURL.Long)
 	return nil
 }

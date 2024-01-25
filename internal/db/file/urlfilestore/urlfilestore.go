@@ -14,12 +14,12 @@ import (
 )
 
 var _ url.URLStore = &fileURLs{}
-var currentUUID atomic.Uint32
 
 type fileURLs struct {
 	sync.Mutex
-	file *os.File
-	m    map[string]string
+	file        *os.File
+	m           map[string]url.URL
+	currentUUID uint32
 }
 
 func NewFileURLs(filename string) (*fileURLs, error) {
@@ -30,7 +30,8 @@ func NewFileURLs(filename string) (*fileURLs, error) {
 		return nil, err
 	}
 
-	m := make(map[string]string)
+	m := make(map[string]url.URL)
+	var curUUID uint32
 
 	scanner := bufio.NewScanner(file)
 
@@ -43,11 +44,14 @@ func NewFileURLs(filename string) (*fileURLs, error) {
 			return nil, err
 		}
 
-		m[URLData.Short] = URLData.Long
-		currentUUID.Add(1)
+		m[URLData.Short] = URLData
+		curUUID++
 	}
 
-	return &fileURLs{file: file, m: m}, nil
+	f := fileURLs{file: file, m: m, currentUUID: 0}
+	atomic.AddUint32(&f.currentUUID, curUUID)
+
+	return &f, nil
 }
 
 func (f *fileURLs) Close() error {
@@ -64,6 +68,9 @@ func (f *fileURLs) Shortening(ctx context.Context, u url.URL) error {
 	default:
 	}
 
+	atomic.AddUint32(&f.currentUUID, 1)
+	u.UUID = fmt.Sprintf("%d", f.currentUUID)
+
 	data, err := json.Marshal(&u)
 	if err != nil {
 		return err
@@ -71,34 +78,27 @@ func (f *fileURLs) Shortening(ctx context.Context, u url.URL) error {
 
 	data = append(data, '\n')
 
-	f.m[u.Short] = u.Long
+	f.m[u.Short] = u
 
 	_, err = f.file.Write(data)
 	return err
 
 }
 
-func (f *fileURLs) Resolve(ctx context.Context, shortURL string) (string, error) {
+func (f *fileURLs) Resolve(ctx context.Context, shortURL string) (*url.URL, error) {
 
 	f.Lock()
 	defer f.Unlock()
 
 	select {
 	case <-ctx.Done():
-		return "", ctx.Err()
+		return nil, ctx.Err()
 	default:
 	}
 
 	u, ok := f.m[shortURL]
 	if ok {
-		return u, nil
+		return &u, nil
 	}
-	return "", sql.ErrNoRows
-}
-
-func (f *fileURLs) CurrentUUID() string {
-
-	currentUUID.Add(1)
-
-	return fmt.Sprintf("%d", currentUUID.Load())
+	return nil, sql.ErrNoRows
 }

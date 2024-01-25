@@ -9,16 +9,16 @@ import (
 )
 
 // пр​оверка на соответствие интерфейсу
-//var _ url.URLStore = &URLs{}
+var _ url.URLStore = &URLs{}
 
 type URLs struct {
 	sync.Mutex
-	m map[string]string
+	m map[string]url.URL
 }
 
 func NewURLs() *URLs {
 	return &URLs{
-		m: make(map[string]string),
+		m: make(map[string]url.URL),
 	}
 }
 
@@ -32,26 +32,22 @@ func (adr *URLs) Shortening(ctx context.Context, u url.URL) error {
 	default:
 	}
 
-	adr.m[u.Short] = u.Long
+	adr.m[u.Short] = u
 	return nil
 }
 
-func (adr *URLs) Resolve(ctx context.Context, shortURL string) (string, error) {
+func (adr *URLs) Resolve(ctx context.Context, shortURL string) (*url.URL, error) {
 	adr.Lock()
 	defer adr.Unlock()
 
 	select {
 	case <-ctx.Done():
-		return "", ctx.Err()
+		return nil, ctx.Err()
 	default:
 	}
 	u, ok := adr.m[shortURL]
 	if ok {
-		return u, nil
+		return &u, nil
 	}
-	return "", sql.ErrNoRows
-}
-
-func (adr *URLs) CurrentUUID() string {
-	return ""
+	return nil, sql.ErrNoRows
 }

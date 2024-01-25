@@ -15,8 +15,7 @@ type URL struct {
 // инверсия зависимостей к базе данных
 type URLStore interface {
 	Shortening(ctx context.Context, adr URL) error
-	Resolve(ctx context.Context, shortURL string) (string, error)
-	CurrentUUID() string
+	Resolve(ctx context.Context, shortURL string) (*URL, error)
 }
 
 type URLs struct {
@@ -31,7 +30,7 @@ func NewURLs(adrstore URLStore) *URLs {
 
 func (u *URLs) Shortening(ctx context.Context, adr URL) (*URL, error) {
 
-	adr.UUID = u.adrstore.CurrentUUID()
+	//adr.UUID = u.adrstore.CurrentUUID()
 	adr.Short = generateShortURL()
 
 	err := u.adrstore.Shortening(ctx, adr)
@@ -42,15 +41,14 @@ func (u *URLs) Shortening(ctx context.Context, adr URL) (*URL, error) {
 	return &adr, nil
 }
 
-func (u *URLs) Resolve(ctx context.Context, shortURL string) (string, error) {
-	longURL, err := u.adrstore.Resolve(ctx, shortURL)
+func (u *URLs) Resolve(ctx context.Context, shortURL string) (*URL, error) {
+	strURL, err := u.adrstore.Resolve(ctx, shortURL)
+
 	if err != nil {
-		return "", fmt.Errorf("read long url: %w", err)
+		return nil, fmt.Errorf("read long url: %w", err)
 	}
-	if longURL == "" {
-		return "", fmt.Errorf("empty long url: %w", err)
-	}
-	return longURL, nil
+
+	return strURL, nil
 }
 
 func generateShortURL() string {
