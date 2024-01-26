@@ -6,15 +6,15 @@ import (
 	"time"
 
 	"github.com/URL_shortener/internal/app/starter"
+	"github.com/URL_shortener/internal/app/url"
 	"github.com/URL_shortener/internal/logger"
-	"github.com/URL_shortener/internal/service/urlservice"
 )
 
 var _ starter.APIServer = &Server{}
 
 type Server struct {
 	srv  http.Server
-	urls *urlservice.URLServices
+	urls *url.URLs
 }
 
 func NewServer(addr string, h http.Handler) *Server {
@@ -38,7 +38,7 @@ func (s *Server) Stop() {
 	cancel()
 }
 
-func (s *Server) Start(urls *urlservice.URLServices) {
+func (s *Server) Start(urls *url.URLs) {
 	s.urls = urls
 	//fmt.Println("server started: ", s.srv.Addr)
 	logger.Log.Infof("server started: %s", s.srv.Addr)

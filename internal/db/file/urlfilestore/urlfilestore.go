@@ -10,17 +10,12 @@ import (
 	"sync"
 )
 
-var _ URLStore = &fileURLs{}
+//var _ url.URLStore = &fileURLs{}
 
 type URL struct {
 	UUID  string `json:"uuid"`
 	Short string `json:"short_url"`
 	Long  string `json:"original_url"`
-}
-
-type URLStore interface {
-	Shortening(ctx context.Context, shortURL, longURL string) error
-	Resolve(ctx context.Context, shortURL string) (*URL, error)
 }
 
 type fileURLs struct {

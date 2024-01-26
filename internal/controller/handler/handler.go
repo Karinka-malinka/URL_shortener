@@ -6,19 +6,19 @@ import (
 	"net/http"
 
 	"github.com/URL_shortener/cmd/config"
+	"github.com/URL_shortener/internal/app/url"
 	"github.com/URL_shortener/internal/logger"
-	"github.com/URL_shortener/internal/service/urlservice"
 	"github.com/labstack/echo/v4"
 	middleware "github.com/labstack/echo/v4/middleware"
 )
 
 type Router struct {
 	*echo.Echo
-	urls *urlservice.URLServices
+	urls *url.URLs
 	cfg  *config.ConfigData
 }
 
-func NewRouter(urls *urlservice.URLServices, cfg *config.ConfigData) *Router {
+func NewRouter(urls *url.URLs, cfg *config.ConfigData) *Router {
 
 	e := echo.New()
 
