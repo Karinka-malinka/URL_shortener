@@ -4,22 +4,23 @@ import (
 	"context"
 	"sync"
 
-	"github.com/URL_shortener/internal/app/url"
+	"github.com/URL_shortener/internal/db/file/urlfilestore"
+	"github.com/URL_shortener/internal/service/urlservice"
 )
 
 type App struct {
-	urls *url.URLs
+	urls *urlservice.URLServices
 }
 
-func NewApp(urlst url.URLStore) *App {
+func NewApp(urlst urlfilestore.URLStore) *App {
 	a := &App{
-		urls: url.NewURLs(urlst),
+		urls: urlservice.NewURLService(urlst),
 	}
 	return a
 }
 
 type APIServer interface {
-	Start(urls *url.URLs)
+	Start(urls *urlservice.URLServices)
 	Stop()
 }
 

@@ -8,17 +8,25 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"sync/atomic"
-
-	"github.com/URL_shortener/internal/app/url"
 )
 
-var _ url.URLStore = &fileURLs{}
+var _ URLStore = &fileURLs{}
+
+type URL struct {
+	UUID  string `json:"uuid"`
+	Short string `json:"short_url"`
+	Long  string `json:"original_url"`
+}
+
+type URLStore interface {
+	Shortening(ctx context.Context, shortURL, longURL string) error
+	Resolve(ctx context.Context, shortURL string) (*URL, error)
+}
 
 type fileURLs struct {
 	sync.Mutex
 	file        *os.File
-	m           map[string]url.URL
+	m           map[string]URL
 	currentUUID uint32
 }
 
@@ -30,14 +38,14 @@ func NewFileURLs(filename string) (*fileURLs, error) {
 		return nil, err
 	}
 
-	m := make(map[string]url.URL)
+	m := make(map[string]URL)
 	var curUUID uint32
 
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
 
-		var URLData url.URL
+		var URLData URL
 		err := json.Unmarshal(scanner.Bytes(), &URLData)
 
 		if err != nil {
@@ -48,8 +56,7 @@ func NewFileURLs(filename string) (*fileURLs, error) {
 		curUUID++
 	}
 
-	f := fileURLs{file: file, m: m, currentUUID: 0}
-	atomic.AddUint32(&f.currentUUID, curUUID)
+	f := fileURLs{file: file, m: m, currentUUID: curUUID}
 
 	return &f, nil
 }
@@ -58,7 +65,8 @@ func (f *fileURLs) Close() error {
 	return f.file.Close()
 }
 
-func (f *fileURLs) Shortening(ctx context.Context, u url.URL) error {
+func (f *fileURLs) Shortening(ctx context.Context, shortURL, longURL string) error {
+
 	f.Lock()
 	defer f.Unlock()
 
@@ -68,8 +76,11 @@ func (f *fileURLs) Shortening(ctx context.Context, u url.URL) error {
 	default:
 	}
 
-	atomic.AddUint32(&f.currentUUID, 1)
-	u.UUID = fmt.Sprintf("%d", f.currentUUID)
+	f.currentUUID++
+	u := URL{
+		UUID:  fmt.Sprintf("%d", f.currentUUID),
+		Short: shortURL,
+		Long:  longURL}
 
 	data, err := json.Marshal(&u)
 	if err != nil {
@@ -85,7 +96,7 @@ func (f *fileURLs) Shortening(ctx context.Context, u url.URL) error {
 
 }
 
-func (f *fileURLs) Resolve(ctx context.Context, shortURL string) (*url.URL, error) {
+func (f *fileURLs) Resolve(ctx context.Context, shortURL string) (*URL, error) {
 
 	f.Lock()
 	defer f.Unlock()

@@ -6,19 +6,19 @@ import (
 	"net/http"
 
 	"github.com/URL_shortener/cmd/config"
-	"github.com/URL_shortener/internal/app/url"
 	"github.com/URL_shortener/internal/logger"
+	"github.com/URL_shortener/internal/service/urlservice"
 	"github.com/labstack/echo/v4"
 	middleware "github.com/labstack/echo/v4/middleware"
 )
 
 type Router struct {
 	*echo.Echo
-	urls *url.URLs
+	urls *urlservice.URLServices
 	cfg  *config.ConfigData
 }
 
-func NewRouter(urls *url.URLs, cfg *config.ConfigData) *Router {
+func NewRouter(urls *urlservice.URLServices, cfg *config.ConfigData) *Router {
 
 	e := echo.New()
 
@@ -68,16 +68,12 @@ func (rt *Router) ShortURL(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 
-		burl := url.URL{
-			Long: string(body),
-		}
-
-		nburl, err := rt.urls.Shortening(c.Request().Context(), burl)
+		shortURL, err := rt.urls.Shortening(c.Request().Context(), string(body))
 		if err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 
-		urlShort := rt.cfg.BaseShortAddr + "/" + nburl.Short
+		urlShort := rt.cfg.BaseShortAddr + "/" + shortURL
 
 		ca <- urlShort
 		return nil
@@ -121,16 +117,12 @@ func (rt *Router) ShortURLJSON(c echo.Context) error {
 		originalURL := inputData["url"]
 		if originalURL != "" {
 
-			burl := url.URL{
-				Long: originalURL,
-			}
-
-			nburl, err := rt.urls.Shortening(c.Request().Context(), burl)
+			shortURL, err := rt.urls.Shortening(c.Request().Context(), originalURL)
 			if err != nil {
 				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 			}
 
-			urlShort := rt.cfg.BaseShortAddr + "/" + nburl.Short
+			urlShort := rt.cfg.BaseShortAddr + "/" + shortURL
 
 			ca <- urlShort
 			return nil
@@ -157,12 +149,12 @@ func (rt *Router) ResolveURL(c echo.Context) error {
 
 	uri := c.Param("id")
 
-	strURL, err := rt.urls.Resolve(c.Request().Context(), uri)
+	originalURL, err := rt.urls.Resolve(c.Request().Context(), uri)
 
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	c.Redirect(http.StatusTemporaryRedirect, strURL.Long)
+	c.Redirect(http.StatusTemporaryRedirect, originalURL)
 	return nil
 }

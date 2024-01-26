@@ -8,11 +8,11 @@ import (
 
 	"github.com/URL_shortener/cmd/config"
 	"github.com/URL_shortener/internal/app/starter"
-	"github.com/URL_shortener/internal/app/url"
 	"github.com/URL_shortener/internal/controller/handler"
 	"github.com/URL_shortener/internal/controller/server"
 	"github.com/URL_shortener/internal/db/file/urlfilestore"
 	"github.com/URL_shortener/internal/logger"
+	"github.com/URL_shortener/internal/service/urlservice"
 )
 
 func main() {
@@ -30,7 +30,7 @@ func main() {
 		logger.Log.Fatal(err.Error())
 	}
 	a := starter.NewApp(urlst)
-	urls := url.NewURLs(urlst)
+	urls := urlservice.NewURLService(urlst)
 	h := handler.NewRouter(urls, cfg)
 	srv := server.NewServer(cfg.RunAddr, h)
 
