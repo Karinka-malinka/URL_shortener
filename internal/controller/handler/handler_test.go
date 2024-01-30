@@ -9,16 +9,22 @@ import (
 
 	"github.com/URL_shortener/cmd/config"
 	"github.com/URL_shortener/internal/app/url"
-	"github.com/URL_shortener/internal/db/mem/urlmemstore"
+	"github.com/URL_shortener/internal/db/file/urlfilestore"
+	"github.com/URL_shortener/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRouter_ShortResolveURL1(t *testing.T) {
+func TestRouter_ShortResolveURL2(t *testing.T) {
 
 	cfg := config.NewConfig()
+	//cfg.FileStoragePath = "C:/GoWork/src/github.com/URL_shortener/short-url-db.json"
+	cfg.FileStoragePath = "/tmp/short-url-db.json"
 
-	urlst := urlmemstore.NewURLs()
+	urlst, err := urlfilestore.NewFileURLs(cfg.FileStoragePath)
+	if err != nil {
+		logger.Log.Fatal(err.Error() + ", path = " + cfg.FileStoragePath)
+	}
 	urls := url.NewURLs(urlst)
 	rt := NewRouter(urls, cfg)
 	hts := httptest.NewServer(rt)
@@ -91,6 +97,7 @@ func TestRouter_ShortResolveURL1(t *testing.T) {
 
 				requeststr = string(rbody)
 			}
+
 		})
 	}
 }

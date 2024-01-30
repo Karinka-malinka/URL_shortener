@@ -1,12 +1,15 @@
 package handler
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 
 	"github.com/URL_shortener/cmd/config"
 	"github.com/URL_shortener/internal/app/url"
+	"github.com/URL_shortener/internal/logger"
 	"github.com/labstack/echo/v4"
+	middleware "github.com/labstack/echo/v4/middleware"
 )
 
 type Router struct {
@@ -24,8 +27,22 @@ func NewRouter(urls *url.URLs, cfg *config.ConfigData) *Router {
 		urls: urls,
 		cfg:  cfg,
 	}
+
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogURI:          true,
+		LogStatus:       true,
+		LogMethod:       true,
+		LogResponseSize: true,
+		LogLatency:      true,
+		LogValuesFunc:   logger.RequestLogger,
+	}))
+
+	e.Use(middleware.Decompress())
+	e.Use(middleware.Gzip())
+
 	e.POST("/", r.ShortURL)
 	e.GET("/:id", r.ResolveURL)
+	e.POST("/api/shorten", r.ShortURLJSON)
 
 	return r
 }
@@ -51,16 +68,12 @@ func (rt *Router) ShortURL(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 
-		burl := url.URL{
-			Long: string(body),
-		}
-
-		nburl, err := rt.urls.Shortening(c.Request().Context(), burl)
+		shortURL, err := rt.urls.Shortening(c.Request().Context(), string(body))
 		if err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
 
-		urlShort := rt.cfg.BaseShortAddr + "/" + nburl.Short
+		urlShort := rt.cfg.BaseShortAddr + "/" + shortURL
 
 		ca <- urlShort
 		return nil
@@ -74,17 +87,74 @@ func (rt *Router) ShortURL(c echo.Context) error {
 	}
 }
 
+func (rt *Router) ShortURLJSON(c echo.Context) error {
+
+	ca := make(chan string, 1)
+	r := c.Request()
+
+	rBody := r.Body
+
+	defer rBody.Close()
+
+	if rBody == http.NoBody {
+		return echo.NewHTTPError(http.StatusBadRequest, "No body")
+	}
+
+	go func() error {
+
+		body, err := io.ReadAll(rBody)
+
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+
+		var inputData map[string]string
+
+		if err = json.Unmarshal(body, &inputData); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+
+		originalURL := inputData["url"]
+		if originalURL != "" {
+
+			shortURL, err := rt.urls.Shortening(c.Request().Context(), originalURL)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+			}
+
+			urlShort := rt.cfg.BaseShortAddr + "/" + shortURL
+
+			ca <- urlShort
+			return nil
+		}
+
+		return echo.NewHTTPError(http.StatusBadRequest, "no url")
+
+	}()
+
+	select {
+	case result := <-ca:
+
+		data := map[string]interface{}{
+			"result": result,
+		}
+
+		return c.JSON(http.StatusCreated, data)
+	case <-c.Request().Context().Done():
+		return nil
+	}
+}
+
 func (rt *Router) ResolveURL(c echo.Context) error {
 
-	//uri := strings.Split(r.RequestURI, "/")
 	uri := c.Param("id")
 
-	longURL, err := rt.urls.Resolve(c.Request().Context(), uri)
+	originalURL, err := rt.urls.Resolve(c.Request().Context(), uri)
 
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	c.Redirect(http.StatusTemporaryRedirect, longURL)
+	c.Redirect(http.StatusTemporaryRedirect, originalURL)
 	return nil
 }

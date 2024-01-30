@@ -3,20 +3,15 @@ package url
 import (
 	"context"
 	"fmt"
-	"time"
+	"math/rand"
 
-	hashids "github.com/speps/go-hashids"
+	"github.com/URL_shortener/internal/db/file/urlfilestore"
 )
-
-type URL struct {
-	Short string
-	Long  string
-}
 
 // инверсия зависимостей к базе данных
 type URLStore interface {
-	Shortening(ctx context.Context, adr URL) error
-	Resolve(ctx context.Context, shortURL string) (string, error)
+	Shortening(ctx context.Context, shortURL, longURL string) error
+	Resolve(ctx context.Context, shortURL string) (*urlfilestore.URL, error)
 }
 
 type URLs struct {
@@ -29,36 +24,41 @@ func NewURLs(adrstore URLStore) *URLs {
 	}
 }
 
-func (u *URLs) Shortening(ctx context.Context, adr URL) (*URL, error) {
+func (u *URLs) Shortening(ctx context.Context, longURL string) (string, error) {
 
-	// получаем короткий url как хэш текущего времени
-	hd := hashids.NewData()
-	h, err := hashids.NewWithData(hd)
+	shortURL := generateShortURL()
+
+	err := u.adrstore.Shortening(ctx, shortURL, longURL)
 	if err != nil {
-		return nil, err
-	}
-	now := time.Now()
-	urlID, err := h.Encode([]int{int(now.Unix())})
-	if err != nil {
-		return nil, err
+		return "", fmt.Errorf("create short url: %w", err)
 	}
 
-	adr.Short = urlID
-
-	err = u.adrstore.Shortening(ctx, adr)
-	if err != nil {
-		return nil, fmt.Errorf("create short url: %w", err)
-	}
-	return &adr, nil
+	return shortURL, nil
 }
 
 func (u *URLs) Resolve(ctx context.Context, shortURL string) (string, error) {
-	longURL, err := u.adrstore.Resolve(ctx, shortURL)
+
+	strURL, err := u.adrstore.Resolve(ctx, shortURL)
+
 	if err != nil {
 		return "", fmt.Errorf("read long url: %w", err)
 	}
-	if longURL == "" {
-		return "", fmt.Errorf("empty long url: %w", err)
+
+	return strURL.Long, nil
+}
+
+func generateShortURL() string {
+
+	const shortURLLength = 8
+
+	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+	shortURL := make([]byte, shortURLLength)
+
+	for i := range shortURL {
+		shortURL[i] = letters[rand.Intn(len(letters))]
 	}
-	return longURL, nil
+
+	return string(shortURL)
+
 }

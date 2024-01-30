@@ -4,25 +4,26 @@ import (
 	"context"
 	"database/sql"
 	"sync"
-
-	"github.com/URL_shortener/internal/app/url"
 )
 
-// пр​оверка на соответствие интерфейсу
-var _ url.URLStore = &URLs{}
+type URL struct {
+	UUID  string `json:"uuid"`
+	Short string `json:"short_url"`
+	Long  string `json:"original_url"`
+}
 
 type URLs struct {
 	sync.Mutex
-	m map[string]string
+	m map[string]URL
 }
 
 func NewURLs() *URLs {
 	return &URLs{
-		m: make(map[string]string),
+		m: make(map[string]URL),
 	}
 }
 
-func (adr *URLs) Shortening(ctx context.Context, u url.URL) error {
+func (adr *URLs) Shortening(ctx context.Context, u URL) error {
 	adr.Lock()
 	defer adr.Unlock()
 
@@ -32,22 +33,22 @@ func (adr *URLs) Shortening(ctx context.Context, u url.URL) error {
 	default:
 	}
 
-	adr.m[u.Short] = u.Long
+	adr.m[u.Short] = u
 	return nil
 }
 
-func (adr *URLs) Resolve(ctx context.Context, shortURL string) (string, error) {
+func (adr *URLs) Resolve(ctx context.Context, shortURL string) (*URL, error) {
 	adr.Lock()
 	defer adr.Unlock()
 
 	select {
 	case <-ctx.Done():
-		return "", ctx.Err()
+		return nil, ctx.Err()
 	default:
 	}
 	u, ok := adr.m[shortURL]
 	if ok {
-		return u, nil
+		return &u, nil
 	}
-	return "", sql.ErrNoRows
+	return nil, sql.ErrNoRows
 }
