@@ -10,6 +10,7 @@ import (
 	"github.com/URL_shortener/cmd/config"
 	"github.com/URL_shortener/internal/app/url"
 	"github.com/URL_shortener/internal/db/file/urlfilestore"
+	"github.com/URL_shortener/internal/db/mem/urlmemstore"
 	"github.com/URL_shortener/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -97,6 +98,53 @@ func TestRouter_ShortResolveURL2(t *testing.T) {
 
 				requeststr = string(rbody)
 			}
+
+		})
+	}
+}
+
+func TestRouter_Ping(t *testing.T) {
+
+	cfg := config.NewConfig()
+
+	urlst := urlmemstore.NewURLs()
+	urls := url.NewURLs(urlst)
+	rt := NewRouter(urls, cfg)
+	hts := httptest.NewServer(rt)
+	cli := hts.Client()
+
+	cfg.BaseShortAddr = hts.URL
+	requeststr := hts.URL + "/ping"
+
+	type request struct {
+		metod string
+	}
+
+	tests := []struct {
+		name           string
+		request        request
+		wantStatusCode int
+	}{
+		{
+			name: "GET positive test",
+			request: request{
+				metod: "GET",
+			},
+			wantStatusCode: 200,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			r, _ := http.NewRequest(tt.request.metod, requeststr, nil)
+
+			resp, err := cli.Do(r)
+			if err != nil {
+				require.NoError(t, err)
+			}
+
+			assert.Equal(t, tt.wantStatusCode, resp.StatusCode)
 
 		})
 	}

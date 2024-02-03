@@ -5,13 +5,20 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/URL_shortener/internal/db/file/urlfilestore"
+	"github.com/google/uuid"
 )
+
+type URL struct {
+	UUID  uuid.UUID `json:"uuid"`
+	Short string    `json:"short_url"`
+	Long  string    `json:"original_url"`
+}
 
 // инверсия зависимостей к базе данных
 type URLStore interface {
-	Shortening(ctx context.Context, shortURL, longURL string) error
-	Resolve(ctx context.Context, shortURL string) (*urlfilestore.URL, error)
+	Shortening(ctx context.Context, u URL) error
+	Resolve(ctx context.Context, shortURL string) (*URL, error)
+	Ping() bool
 }
 
 type URLs struct {
@@ -28,7 +35,13 @@ func (u *URLs) Shortening(ctx context.Context, longURL string) (string, error) {
 
 	shortURL := generateShortURL()
 
-	err := u.adrstore.Shortening(ctx, shortURL, longURL)
+	nu := URL{
+		UUID:  uuid.New(),
+		Short: shortURL,
+		Long:  longURL,
+	}
+
+	err := u.adrstore.Shortening(ctx, nu)
 	if err != nil {
 		return "", fmt.Errorf("create short url: %w", err)
 	}
@@ -45,6 +58,10 @@ func (u *URLs) Resolve(ctx context.Context, shortURL string) (string, error) {
 	}
 
 	return strURL.Long, nil
+}
+
+func (u *URLs) PingDB() bool {
+	return u.adrstore.Ping()
 }
 
 func generateShortURL() string {

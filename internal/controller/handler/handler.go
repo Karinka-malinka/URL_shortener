@@ -43,6 +43,7 @@ func NewRouter(urls *url.URLs, cfg *config.ConfigData) *Router {
 	e.POST("/", r.ShortURL)
 	e.GET("/:id", r.ResolveURL)
 	e.POST("/api/shorten", r.ShortURLJSON)
+	e.GET("/ping", r.Ping)
 
 	return r
 }
@@ -156,5 +157,14 @@ func (rt *Router) ResolveURL(c echo.Context) error {
 	}
 
 	c.Redirect(http.StatusTemporaryRedirect, originalURL)
+	return nil
+}
+
+func (rt *Router) Ping(c echo.Context) error {
+
+	if !rt.urls.PingDB() {
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
 	return nil
 }
