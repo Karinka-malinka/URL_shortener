@@ -146,6 +146,9 @@ func TestRouter_Ping(t *testing.T) {
 
 			assert.Equal(t, tt.wantStatusCode, resp.StatusCode)
 
+			err = resp.Body.Close()
+			require.NoError(t, err)
+
 		})
 	}
 }
