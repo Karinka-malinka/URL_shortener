@@ -28,7 +28,7 @@ func NewFileURLs(filename string) (*fileURLs, error) {
 		return nil, err
 	}
 
-	defer file.Close()
+	//defer file.Close()
 
 	m := make(map[string]url.URL)
 	//var curUUID uint32
