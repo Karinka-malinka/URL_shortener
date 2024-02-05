@@ -17,7 +17,6 @@ type fileURLs struct {
 	sync.Mutex
 	file *os.File
 	m    map[string]url.URL
-	//currentUUID uint32
 }
 
 func NewFileURLs(filename string) (*fileURLs, error) {
@@ -28,10 +27,7 @@ func NewFileURLs(filename string) (*fileURLs, error) {
 		return nil, err
 	}
 
-	//defer file.Close()
-
 	m := make(map[string]url.URL)
-	//var curUUID uint32
 
 	scanner := bufio.NewScanner(file)
 
@@ -45,7 +41,6 @@ func NewFileURLs(filename string) (*fileURLs, error) {
 		}
 
 		m[URLData.Short] = URLData
-		//curUUID++
 	}
 
 	f := fileURLs{file: file, m: m}
@@ -53,11 +48,9 @@ func NewFileURLs(filename string) (*fileURLs, error) {
 	return &f, nil
 }
 
-/*
 func (f *fileURLs) Close() error {
 	return f.file.Close()
 }
-*/
 
 func (f *fileURLs) Shortening(ctx context.Context, u url.URL) error {
 
@@ -69,13 +62,6 @@ func (f *fileURLs) Shortening(ctx context.Context, u url.URL) error {
 		return ctx.Err()
 	default:
 	}
-
-	/*f.currentUUID++
-	u := url.URL{
-		UUID:  fmt.Sprintf("%d", f.currentUUID),
-		Short: shortURL,
-		Long:  longURL}
-	*/
 
 	data, err := json.Marshal(&u)
 	if err != nil {

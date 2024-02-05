@@ -19,6 +19,7 @@ type URLStore interface {
 	Shortening(ctx context.Context, u URL) error
 	Resolve(ctx context.Context, shortURL string) (*URL, error)
 	Ping() bool
+	Close() error
 }
 
 type URLs struct {
@@ -62,6 +63,10 @@ func (u *URLs) Resolve(ctx context.Context, shortURL string) (string, error) {
 
 func (u *URLs) PingDB() bool {
 	return u.adrstore.Ping()
+}
+
+func (u *URLs) CloseDB() {
+	u.adrstore.Close()
 }
 
 func generateShortURL() string {

@@ -33,6 +33,7 @@ func NewServer(addr string, h http.Handler) *Server {
 
 func (s *Server) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	s.urls.CloseDB()
 	s.srv.Shutdown(ctx)
 	logger.Log.Infof("server stoped: %s", s.srv.Addr)
 	cancel()

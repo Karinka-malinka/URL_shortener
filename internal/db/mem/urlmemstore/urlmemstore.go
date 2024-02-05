@@ -21,6 +21,10 @@ func NewURLs() *URLs {
 	}
 }
 
+func (adr *URLs) Close() error {
+	return nil
+}
+
 func (adr *URLs) Shortening(ctx context.Context, u url.URL) error {
 	adr.Lock()
 	defer adr.Unlock()

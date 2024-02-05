@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -51,6 +52,8 @@ func NewRouter(urls *url.URLs, cfg *config.ConfigData) *Router {
 func (rt *Router) ShortURL(c echo.Context) error {
 
 	ca := make(chan string, 1)
+	errc := make(chan error)
+
 	r := c.Request()
 
 	rBody := r.Body
@@ -60,18 +63,22 @@ func (rt *Router) ShortURL(c echo.Context) error {
 	go func() error {
 
 		if rBody == http.NoBody {
-			return echo.ErrBadRequest
+			err := fmt.Errorf("%s", "No body")
+			errc <- err
+			return err
 		}
 
 		body, err := io.ReadAll(rBody)
 
 		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+			errc <- err
+			return err
 		}
 
 		shortURL, err := rt.urls.Shortening(c.Request().Context(), string(body))
 		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+			errc <- err
+			return err
 		}
 
 		urlShort := rt.cfg.BaseShortAddr + "/" + shortURL
@@ -83,6 +90,8 @@ func (rt *Router) ShortURL(c echo.Context) error {
 	select {
 	case result := <-ca:
 		return c.String(http.StatusCreated, result)
+	case err := <-errc:
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	case <-c.Request().Context().Done():
 		return nil
 	}
@@ -91,6 +100,8 @@ func (rt *Router) ShortURL(c echo.Context) error {
 func (rt *Router) ShortURLJSON(c echo.Context) error {
 
 	ca := make(chan string, 1)
+	errc := make(chan error)
+
 	r := c.Request()
 
 	rBody := r.Body
@@ -106,13 +117,15 @@ func (rt *Router) ShortURLJSON(c echo.Context) error {
 		body, err := io.ReadAll(rBody)
 
 		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+			errc <- err
+			return err
 		}
 
 		var inputData map[string]string
 
 		if err = json.Unmarshal(body, &inputData); err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+			errc <- err
+			return err
 		}
 
 		originalURL := inputData["url"]
@@ -120,7 +133,8 @@ func (rt *Router) ShortURLJSON(c echo.Context) error {
 
 			shortURL, err := rt.urls.Shortening(c.Request().Context(), originalURL)
 			if err != nil {
-				return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+				errc <- err
+				return err
 			}
 
 			urlShort := rt.cfg.BaseShortAddr + "/" + shortURL
@@ -129,18 +143,20 @@ func (rt *Router) ShortURLJSON(c echo.Context) error {
 			return nil
 		}
 
-		return echo.NewHTTPError(http.StatusBadRequest, "no url")
+		err = fmt.Errorf("%s", "No url")
+		errc <- err
+		return err
 
 	}()
 
 	select {
 	case result := <-ca:
-
 		data := map[string]interface{}{
 			"result": result,
 		}
-
 		return c.JSON(http.StatusCreated, data)
+	case err := <-errc:
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	case <-c.Request().Context().Done():
 		return nil
 	}
