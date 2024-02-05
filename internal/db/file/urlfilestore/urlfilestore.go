@@ -52,7 +52,7 @@ func (f *fileURLs) Close() error {
 	return f.file.Close()
 }
 
-func (f *fileURLs) Shortening(ctx context.Context, u url.URL) error {
+func (f *fileURLs) Shortening(ctx context.Context, u []url.URL) error {
 
 	f.Lock()
 	defer f.Unlock()
@@ -70,7 +70,9 @@ func (f *fileURLs) Shortening(ctx context.Context, u url.URL) error {
 
 	data = append(data, '\n')
 
-	f.m[u.Short] = u
+	for _, uu := range u {
+		f.m[uu.Short] = uu
+	}
 
 	_, err = f.file.Write(data)
 	return err

@@ -36,6 +36,7 @@ func NewRouter(urls *url.URLs, cfg *config.ConfigData) *Router {
 		LogResponseSize: true,
 		LogLatency:      true,
 		LogValuesFunc:   logger.RequestLogger,
+		LogError:        true,
 	}))
 
 	e.Use(middleware.Decompress())
@@ -44,6 +45,7 @@ func NewRouter(urls *url.URLs, cfg *config.ConfigData) *Router {
 	e.POST("/", r.ShortURL)
 	e.GET("/:id", r.ResolveURL)
 	e.POST("/api/shorten", r.ShortURLJSON)
+	e.POST("/api/shorten/batch", r.Batch)
 	e.GET("/ping", r.Ping)
 
 	return r
@@ -155,6 +157,66 @@ func (rt *Router) ShortURLJSON(c echo.Context) error {
 			"result": result,
 		}
 		return c.JSON(http.StatusCreated, data)
+	case err := <-errc:
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	case <-c.Request().Context().Done():
+		return nil
+	}
+}
+
+func (rt *Router) Batch(c echo.Context) error {
+
+	ca := make(chan []url.URL, 1)
+	errc := make(chan error)
+
+	r := c.Request()
+
+	rBody := r.Body
+
+	defer rBody.Close()
+
+	if rBody == http.NoBody {
+		return echo.NewHTTPError(http.StatusBadRequest, "No body")
+	}
+
+	go func() error {
+
+		body, err := io.ReadAll(rBody)
+
+		if err != nil {
+			errc <- err
+			return err
+		}
+
+		var inputData []url.URL
+
+		if err = json.Unmarshal(body, &inputData); err != nil {
+			errc <- err
+			return err
+		}
+
+		shortURL, err := rt.urls.Batch(c.Request().Context(), inputData)
+		if err != nil {
+			errc <- err
+			return err
+		}
+
+		var outputData []url.URL
+		for _, u := range *shortURL {
+
+			outputData = append(outputData, url.URL{
+				Short:         rt.cfg.BaseShortAddr + "/" + u.Short,
+				CorrelationID: u.CorrelationID})
+		}
+
+		ca <- outputData
+		return nil
+
+	}()
+
+	select {
+	case result := <-ca:
+		return c.JSON(http.StatusCreated, result)
 	case err := <-errc:
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	case <-c.Request().Context().Done():

@@ -23,8 +23,9 @@ func NewDB(ctx context.Context, ps string) (*DBURLs, error) {
 
 	_, err = db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS shorten (
         "uuid" TEXT,
+		"original_url" TEXT,
         "short_url" TEXT,
-        "original_url" TEXT
+		"correlation_id" TEXT
       )`)
 
 	if err != nil {
@@ -45,7 +46,7 @@ func (d *DBURLs) Close() error {
 	return d.db.Close()
 }
 
-func (d *DBURLs) Shortening(ctx context.Context, u url.URL) error {
+func (d *DBURLs) Shortening(ctx context.Context, u []url.URL) error {
 
 	tx, err := d.db.Begin()
 	if err != nil {
@@ -54,18 +55,21 @@ func (d *DBURLs) Shortening(ctx context.Context, u url.URL) error {
 
 	defer tx.Rollback()
 
-	stmt, err := tx.PrepareContext(ctx,
-		"INSERT INTO shorten (uuid, short_url, original_url) VALUES($1,$2,$3)")
+	for _, uu := range u {
+		stmt, err := tx.PrepareContext(ctx,
+			"INSERT INTO shorten (uuid, short_url, original_url, correlation_id) VALUES($1,$2,$3,$4)")
 
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
+		if err != nil {
+			return err
+		}
 
-	_, err = stmt.ExecContext(ctx, u.UUID.String(), u.Short, u.Long)
+		defer stmt.Close()
 
-	if err != nil {
-		return err
+		_, err = stmt.ExecContext(ctx, uu.UUID.String(), uu.Short, uu.Long, uu.CorrelationID)
+
+		if err != nil {
+			return err
+		}
 	}
 
 	return tx.Commit()
@@ -93,7 +97,7 @@ func (d *DBURLs) Resolve(ctx context.Context, shortURL string) (*url.URL, error)
 
 	for rows.Next() {
 
-		if err = rows.Scan(&URL); err != nil {
+		if err = rows.Scan(&URL.UUID, &URL.Long, &URL.Short, &URL.CorrelationID); err != nil {
 			return nil, err
 		}
 	}

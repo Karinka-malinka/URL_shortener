@@ -9,14 +9,15 @@ import (
 )
 
 type URL struct {
-	UUID  uuid.UUID `json:"uuid"`
-	Short string    `json:"short_url"`
-	Long  string    `json:"original_url"`
+	UUID          uuid.UUID `json:"-"`
+	Short         string    `json:"short_url"`
+	Long          string    `json:"original_url,omitempty"`
+	CorrelationID string    `json:"correlation_id"`
 }
 
 // инверсия зависимостей к базе данных
 type URLStore interface {
-	Shortening(ctx context.Context, u URL) error
+	Shortening(ctx context.Context, u []URL) error
 	Resolve(ctx context.Context, shortURL string) (*URL, error)
 	Ping() bool
 	Close() error
@@ -36,11 +37,13 @@ func (u *URLs) Shortening(ctx context.Context, longURL string) (string, error) {
 
 	shortURL := generateShortURL()
 
-	nu := URL{
+	var nu []URL
+
+	nu = append(nu, URL{
 		UUID:  uuid.New(),
 		Short: shortURL,
 		Long:  longURL,
-	}
+	})
 
 	err := u.adrstore.Shortening(ctx, nu)
 	if err != nil {
@@ -67,6 +70,31 @@ func (u *URLs) PingDB() bool {
 
 func (u *URLs) CloseDB() {
 	u.adrstore.Close()
+}
+
+func (u *URLs) Batch(ctx context.Context, sURL []URL) (*[]URL, error) {
+
+	var nu []URL
+
+	for _, bu := range sURL {
+
+		shortURL := generateShortURL()
+
+		nu = append(nu, URL{
+			UUID:          uuid.New(),
+			Short:         shortURL,
+			Long:          bu.Long,
+			CorrelationID: bu.CorrelationID,
+		})
+	}
+
+	err := u.adrstore.Shortening(ctx, nu)
+
+	if err != nil {
+		return &nu, fmt.Errorf("create short url: %w", err)
+	}
+
+	return &nu, nil
 }
 
 func generateShortURL() string {

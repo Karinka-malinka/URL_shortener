@@ -47,6 +47,7 @@ func RequestLogger(c echo.Context, values middleware.RequestLoggerValues) error 
 		"latency":       values.Latency.Seconds(),
 		"status":        values.Status,
 		"response_size": values.ResponseSize,
+		"error":         values.Error,
 	}).Info("Request")
 
 	return nil

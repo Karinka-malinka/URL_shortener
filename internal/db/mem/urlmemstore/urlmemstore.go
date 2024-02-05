@@ -25,7 +25,7 @@ func (adr *URLs) Close() error {
 	return nil
 }
 
-func (adr *URLs) Shortening(ctx context.Context, u url.URL) error {
+func (adr *URLs) Shortening(ctx context.Context, u []url.URL) error {
 	adr.Lock()
 	defer adr.Unlock()
 
@@ -35,7 +35,9 @@ func (adr *URLs) Shortening(ctx context.Context, u url.URL) error {
 	default:
 	}
 
-	adr.m[u.Short] = u
+	for _, uu := range u {
+		adr.m[uu.Short] = uu
+	}
 	return nil
 }
 
