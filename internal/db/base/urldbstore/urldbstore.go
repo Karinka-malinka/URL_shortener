@@ -82,6 +82,11 @@ func (d *DBURLs) Resolve(ctx context.Context, shortURL string) (*url.URL, error)
 	if err != nil {
 		return nil, err
 	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
 	defer rows.Close()
 
 	var URL url.URL
