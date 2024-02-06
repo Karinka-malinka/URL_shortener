@@ -9,10 +9,10 @@ import (
 )
 
 type URL struct {
-	UUID          uuid.UUID `json:"-"`
+	UUID          uuid.UUID `json:"uuid"`
 	Short         string    `json:"short_url"`
-	Long          string    `json:"original_url,omitempty"`
-	CorrelationID string    `json:"correlation_id"`
+	Long          string    `json:"original_url"`
+	CorrelationID string    `json:"-"`
 }
 
 // инверсия зависимостей к базе данных
@@ -46,8 +46,9 @@ func (u *URLs) Shortening(ctx context.Context, longURL string) (string, error) {
 	})
 
 	err := u.adrstore.Shortening(ctx, nu)
+
 	if err != nil {
-		return "", fmt.Errorf("create short url: %w", err)
+		return shortURL, fmt.Errorf("create short url: %w", err)
 	}
 
 	return shortURL, nil

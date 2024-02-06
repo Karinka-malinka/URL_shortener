@@ -2,12 +2,15 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/URL_shortener/cmd/config"
 	"github.com/URL_shortener/internal/app/url"
+	"github.com/URL_shortener/internal/db/base/urldbstore"
 	"github.com/URL_shortener/internal/logger"
 	"github.com/labstack/echo/v4"
 	middleware "github.com/labstack/echo/v4/middleware"
@@ -78,12 +81,16 @@ func (rt *Router) ShortURL(c echo.Context) error {
 		}
 
 		shortURL, err := rt.urls.Shortening(c.Request().Context(), string(body))
+		urlShort := rt.cfg.BaseShortAddr + "/" + shortURL
+
 		if err != nil {
+			if errors.Is(err, urldbstore.ErrConflict) {
+				ca <- "CONFLICT " + urlShort
+				return nil
+			}
 			errc <- err
 			return err
 		}
-
-		urlShort := rt.cfg.BaseShortAddr + "/" + shortURL
 
 		ca <- urlShort
 		return nil
@@ -91,6 +98,10 @@ func (rt *Router) ShortURL(c echo.Context) error {
 
 	select {
 	case result := <-ca:
+		s := strings.Split(result, " ")
+		if s[0] == "CONFLICT" {
+			return c.String(http.StatusConflict, s[1])
+		}
 		return c.String(http.StatusCreated, result)
 	case err := <-errc:
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())

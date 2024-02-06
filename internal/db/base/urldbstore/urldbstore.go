@@ -3,12 +3,17 @@ package urldbstore
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/URL_shortener/internal/app/url"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/lib/pq"
 )
 
 var _ url.URLStore = &DBURLs{}
+
+var ErrConflict = errors.New("data conflict")
 
 type DBURLs struct {
 	db *sql.DB
@@ -22,8 +27,8 @@ func NewDB(ctx context.Context, ps string) (*DBURLs, error) {
 	}
 
 	_, err = db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS shorten (
-        "uuid" TEXT,
-		"original_url" TEXT,
+        "uuid" TEXT PRIMARY KEY,
+		"original_url" TEXT UNIQUE,
         "short_url" TEXT,
 		"correlation_id" TEXT
       )`)
@@ -32,13 +37,12 @@ func NewDB(ctx context.Context, ps string) (*DBURLs, error) {
 		return nil, err
 	}
 
-	_, err = db.ExecContext(ctx, "CREATE INDEX IF NOT EXISTS original_url ON shorten (original_url)")
+	_, err = db.ExecContext(ctx, "CREATE INDEX IF NOT EXISTS ix_shorten_original_url ON shorten (original_url)")
 	if err != nil {
 		return nil, err
 	}
 
 	d := DBURLs{db: db}
-
 	return &d, nil
 }
 
@@ -56,8 +60,9 @@ func (d *DBURLs) Shortening(ctx context.Context, u []url.URL) error {
 	defer tx.Rollback()
 
 	for _, uu := range u {
+
 		stmt, err := tx.PrepareContext(ctx,
-			"INSERT INTO shorten (uuid, short_url, original_url, correlation_id) VALUES($1,$2,$3,$4)")
+			"INSERT INTO shorten (uuid, original_url, short_url, correlation_id) VALUES($1,$2,$3,$4) ON CONFLICT (original_url) DO NOTHING")
 
 		if err != nil {
 			return err
@@ -65,9 +70,14 @@ func (d *DBURLs) Shortening(ctx context.Context, u []url.URL) error {
 
 		defer stmt.Close()
 
-		_, err = stmt.ExecContext(ctx, uu.UUID.String(), uu.Short, uu.Long, uu.CorrelationID)
+		_, err = stmt.ExecContext(ctx, uu.UUID.String(), uu.Long, uu.Short, uu.CorrelationID)
 
 		if err != nil {
+			// проверяем, что ошибка сигнализирует о потенциальном нарушении целостности данных
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
+				return ErrConflict
+			}
 			return err
 		}
 	}
