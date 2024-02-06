@@ -12,7 +12,7 @@ type URL struct {
 	UUID          uuid.UUID `json:"uuid"`
 	Short         string    `json:"short_url"`
 	Long          string    `json:"original_url"`
-	CorrelationID string    `json:"-"`
+	CorrelationID string    `json:"correlation_id,omitempty"`
 }
 
 // инверсия зависимостей к базе данных
