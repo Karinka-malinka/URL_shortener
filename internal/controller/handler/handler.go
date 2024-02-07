@@ -21,11 +21,6 @@ type Router struct {
 	cfg  *config.ConfigData
 }
 
-/*type ErrSt struct {
-	Err         error
-	Description string
-}*/
-
 func NewRouter(urls *url.URLs, cfg *config.ConfigData) *Router {
 
 	e := echo.New()

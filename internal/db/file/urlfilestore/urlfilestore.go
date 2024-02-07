@@ -63,19 +63,23 @@ func (f *fileURLs) Shortening(ctx context.Context, u []url.URL) error {
 	default:
 	}
 
-	data, err := json.Marshal(&u)
-	if err != nil {
-		return err
-	}
-
-	data = append(data, '\n')
-
 	for _, uu := range u {
+		data, err := json.Marshal(&uu)
+		if err != nil {
+			return err
+		}
+
+		data = append(data, '\n')
+
 		f.m[uu.Short] = uu
+
+		_, err = f.file.Write(data)
+		if err != nil {
+			return err
+		}
 	}
 
-	_, err = f.file.Write(data)
-	return err
+	return nil
 
 }
 
