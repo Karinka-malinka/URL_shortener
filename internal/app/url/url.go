@@ -9,15 +9,17 @@ import (
 )
 
 type URL struct {
-	UUID          uuid.UUID `json:"-"`
+	UUID          uuid.UUID `json:"uuid,omitempty"`
 	Short         string    `json:"short_url"`
 	Long          string    `json:"original_url,omitempty"`
 	CorrelationID string    `json:"correlation_id"`
 }
 
+//var ErrConflict = errors.New("data conflict")
+
 // инверсия зависимостей к базе данных
 type URLStore interface {
-	Shortening(ctx context.Context, u []URL) error
+	Shortening(ctx context.Context, u []URL) (*URL, error)
 	Resolve(ctx context.Context, shortURL string) (*URL, error)
 	Ping() bool
 	Close() error
@@ -45,8 +47,13 @@ func (u *URLs) Shortening(ctx context.Context, longURL string) (string, error) {
 		Long:  longURL,
 	})
 
-	err := u.adrstore.Shortening(ctx, nu)
+	_, err := u.adrstore.Shortening(ctx, nu)
 	if err != nil {
+		/*if err == ErrConflict {
+			return exURL.Short, err
+		}
+		return "", fmt.Errorf("create short url: %w", err)
+		*/
 		return "", fmt.Errorf("create short url: %w", err)
 	}
 
@@ -88,9 +95,16 @@ func (u *URLs) Batch(ctx context.Context, sURL []URL) (*[]URL, error) {
 		})
 	}
 
-	err := u.adrstore.Shortening(ctx, nu)
+	_, err := u.adrstore.Shortening(ctx, nu)
 
 	if err != nil {
+		/*if err == ErrConflict {
+			res, err := json.MarshalIndent(exURL, "", "	")
+			if err != nil {
+				return nil, err
+			}
+			return nil, fmt.Errorf("create short url: %w \n %s", err, string(res))
+		}*/
 		return &nu, fmt.Errorf("create short url: %w", err)
 	}
 

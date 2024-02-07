@@ -3,9 +3,12 @@ package urldbstore
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/URL_shortener/internal/app/url"
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 var _ url.URLStore = &DBURLs{}
@@ -16,23 +19,24 @@ type DBURLs struct {
 
 func NewDB(ctx context.Context, ps string) (*DBURLs, error) {
 
-	db, err := sql.Open("postgres", ps)
+	db, err := sql.Open("pgx", ps)
 	if err != nil {
 		return nil, err
 	}
 
 	_, err = db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS shorten (
-        "uuid" TEXT,
+        "uuid" TEXT PRIMARY KEY,
 		"original_url" TEXT,
         "short_url" TEXT,
-		"correlation_id" TEXT
+		"correlation_id" TEXT,
+		UNIQUE (original_url, correlation_id)
       )`)
 
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = db.ExecContext(ctx, "CREATE INDEX IF NOT EXISTS original_url ON shorten (original_url)")
+	_, err = db.ExecContext(ctx, "CREATE INDEX IF NOT EXISTS ix_original_url ON shorten (original_url)")
 	if err != nil {
 		return nil, err
 	}
@@ -46,11 +50,11 @@ func (d *DBURLs) Close() error {
 	return d.db.Close()
 }
 
-func (d *DBURLs) Shortening(ctx context.Context, u []url.URL) error {
+func (d *DBURLs) Shortening(ctx context.Context, u []url.URL) (*url.URL, error) {
 
 	tx, err := d.db.Begin()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	defer tx.Rollback()
@@ -60,7 +64,7 @@ func (d *DBURLs) Shortening(ctx context.Context, u []url.URL) error {
 			"INSERT INTO shorten (uuid, short_url, original_url, correlation_id) VALUES($1,$2,$3,$4)")
 
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		defer stmt.Close()
@@ -68,11 +72,20 @@ func (d *DBURLs) Shortening(ctx context.Context, u []url.URL) error {
 		_, err = stmt.ExecContext(ctx, uu.UUID.String(), uu.Short, uu.Long, uu.CorrelationID)
 
 		if err != nil {
-			return err
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
+				exURL, err := d.getDuplicate(ctx, uu.Long, uu.CorrelationID)
+				if err != nil {
+					return nil, err
+				}
+				return exURL, NewErrorConflict(err, *exURL)
+			}
+
+			return nil, err
 		}
 	}
 
-	return tx.Commit()
+	return nil, tx.Commit()
 
 }
 
@@ -112,4 +125,18 @@ func (d *DBURLs) Ping() bool {
 	}
 
 	return true
+}
+
+func (d *DBURLs) getDuplicate(ctx context.Context, originalURL, correlationID string) (*url.URL, error) {
+
+	row := d.db.QueryRowContext(ctx,
+		"SELECT * FROM shorten WHERE original_url = $1 AND correlation_id = $2", originalURL, correlationID)
+
+	var URL url.URL
+
+	if err := row.Scan(&URL.UUID, &URL.Long, &URL.Short, &URL.CorrelationID); err != nil {
+		return nil, err
+	}
+
+	return &URL, nil
 }

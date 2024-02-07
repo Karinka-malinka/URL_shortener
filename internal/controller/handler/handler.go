@@ -2,12 +2,14 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/URL_shortener/cmd/config"
 	"github.com/URL_shortener/internal/app/url"
+	"github.com/URL_shortener/internal/db/base/urldbstore"
 	"github.com/URL_shortener/internal/logger"
 	"github.com/labstack/echo/v4"
 	middleware "github.com/labstack/echo/v4/middleware"
@@ -18,6 +20,11 @@ type Router struct {
 	urls *url.URLs
 	cfg  *config.ConfigData
 }
+
+/*type ErrSt struct {
+	Err         error
+	Description string
+}*/
 
 func NewRouter(urls *url.URLs, cfg *config.ConfigData) *Router {
 
@@ -78,6 +85,7 @@ func (rt *Router) ShortURL(c echo.Context) error {
 		}
 
 		shortURL, err := rt.urls.Shortening(c.Request().Context(), string(body))
+
 		if err != nil {
 			errc <- err
 			return err
@@ -93,6 +101,10 @@ func (rt *Router) ShortURL(c echo.Context) error {
 	case result := <-ca:
 		return c.String(http.StatusCreated, result)
 	case err := <-errc:
+		var errConflict *urldbstore.ErrConflict
+		if errors.As(err, &errConflict) {
+			return c.String(http.StatusConflict, rt.cfg.BaseShortAddr+"/"+errConflict.URL.Short)
+		}
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	case <-c.Request().Context().Done():
 		return nil
@@ -134,13 +146,13 @@ func (rt *Router) ShortURLJSON(c echo.Context) error {
 		if originalURL != "" {
 
 			shortURL, err := rt.urls.Shortening(c.Request().Context(), originalURL)
+
 			if err != nil {
 				errc <- err
 				return err
 			}
 
 			urlShort := rt.cfg.BaseShortAddr + "/" + shortURL
-
 			ca <- urlShort
 			return nil
 		}
@@ -158,6 +170,13 @@ func (rt *Router) ShortURLJSON(c echo.Context) error {
 		}
 		return c.JSON(http.StatusCreated, data)
 	case err := <-errc:
+		var errConflict *urldbstore.ErrConflict
+		if errors.As(err, &errConflict) {
+			data := map[string]interface{}{
+				"result": rt.cfg.BaseShortAddr + "/" + errConflict.URL.Short,
+			}
+			return c.JSON(http.StatusConflict, data)
+		}
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	case <-c.Request().Context().Done():
 		return nil

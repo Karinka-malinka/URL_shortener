@@ -25,20 +25,20 @@ func (adr *URLs) Close() error {
 	return nil
 }
 
-func (adr *URLs) Shortening(ctx context.Context, u []url.URL) error {
+func (adr *URLs) Shortening(ctx context.Context, u []url.URL) (*url.URL, error) {
 	adr.Lock()
 	defer adr.Unlock()
 
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return nil, ctx.Err()
 	default:
 	}
 
 	for _, uu := range u {
 		adr.m[uu.Short] = uu
 	}
-	return nil
+	return nil, nil
 }
 
 func (adr *URLs) Resolve(ctx context.Context, shortURL string) (*url.URL, error) {
