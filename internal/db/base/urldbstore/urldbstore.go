@@ -50,11 +50,11 @@ func (d *DBURLs) Close() error {
 	return d.db.Close()
 }
 
-func (d *DBURLs) Shortening(ctx context.Context, u []url.URL) (*url.URL, error) {
+func (d *DBURLs) Shortening(ctx context.Context, u []url.URL) error {
 
 	tx, err := d.db.Begin()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	defer tx.Rollback()
@@ -64,7 +64,7 @@ func (d *DBURLs) Shortening(ctx context.Context, u []url.URL) (*url.URL, error) 
 			"INSERT INTO shorten (uuid, short_url, original_url, correlation_id) VALUES($1,$2,$3,$4)")
 
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		defer stmt.Close()
@@ -76,16 +76,16 @@ func (d *DBURLs) Shortening(ctx context.Context, u []url.URL) (*url.URL, error) 
 			if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
 				exURL, err := d.getDuplicate(ctx, uu.Long, uu.CorrelationID)
 				if err != nil {
-					return nil, err
+					return err
 				}
-				return exURL, NewErrorConflict(err, *exURL)
+				return NewErrorConflict(err, *exURL)
 			}
 
-			return nil, err
+			return err
 		}
 	}
 
-	return nil, tx.Commit()
+	return tx.Commit()
 
 }
 

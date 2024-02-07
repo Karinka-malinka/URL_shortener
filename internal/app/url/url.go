@@ -19,7 +19,7 @@ type URL struct {
 
 // инверсия зависимостей к базе данных
 type URLStore interface {
-	Shortening(ctx context.Context, u []URL) (*URL, error)
+	Shortening(ctx context.Context, u []URL) error
 	Resolve(ctx context.Context, shortURL string) (*URL, error)
 	Ping() bool
 	Close() error
@@ -47,7 +47,7 @@ func (u *URLs) Shortening(ctx context.Context, longURL string) (string, error) {
 		Long:  longURL,
 	})
 
-	_, err := u.adrstore.Shortening(ctx, nu)
+	err := u.adrstore.Shortening(ctx, nu)
 	if err != nil {
 		/*if err == ErrConflict {
 			return exURL.Short, err
@@ -95,7 +95,7 @@ func (u *URLs) Batch(ctx context.Context, sURL []URL) (*[]URL, error) {
 		})
 	}
 
-	_, err := u.adrstore.Shortening(ctx, nu)
+	err := u.adrstore.Shortening(ctx, nu)
 
 	if err != nil {
 		/*if err == ErrConflict {

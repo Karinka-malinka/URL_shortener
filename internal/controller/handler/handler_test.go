@@ -20,7 +20,7 @@ func TestRouter_ShortResolveURL2(t *testing.T) {
 
 	cfg := config.NewConfig()
 	//cfg.FileStoragePath = "C:/GoWork/src/github.com/URL_shortener/short-url-db.json"
-	cfg.FileStoragePath = "/tmp/shorturl-db.json"
+	cfg.FileStoragePath = "/tmp/shorturldb.json"
 
 	urlst, err := urlfilestore.NewFileURLs(cfg.FileStoragePath)
 	if err != nil {

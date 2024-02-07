@@ -52,20 +52,20 @@ func (f *fileURLs) Close() error {
 	return f.file.Close()
 }
 
-func (f *fileURLs) Shortening(ctx context.Context, u []url.URL) (*url.URL, error) {
+func (f *fileURLs) Shortening(ctx context.Context, u []url.URL) error {
 
 	f.Lock()
 	defer f.Unlock()
 
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return ctx.Err()
 	default:
 	}
 
 	data, err := json.Marshal(&u)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	data = append(data, '\n')
@@ -75,7 +75,7 @@ func (f *fileURLs) Shortening(ctx context.Context, u []url.URL) (*url.URL, error
 	}
 
 	_, err = f.file.Write(data)
-	return nil, err
+	return err
 
 }
 
