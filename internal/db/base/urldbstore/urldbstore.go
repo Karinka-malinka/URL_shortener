@@ -60,16 +60,8 @@ func (d *DBURLs) Shortening(ctx context.Context, u []url.URL) error {
 	defer tx.Rollback()
 
 	for _, uu := range u {
-		stmt, err := tx.PrepareContext(ctx,
-			"INSERT INTO shorten (uuid, short_url, original_url, correlation_id) VALUES($1,$2,$3,$4)")
 
-		if err != nil {
-			return err
-		}
-
-		defer stmt.Close()
-
-		_, err = stmt.ExecContext(ctx, uu.UUID.String(), uu.Short, uu.Long, uu.CorrelationID)
+		_, err = tx.ExecContext(ctx, "INSERT INTO shorten (uuid, short_url, original_url, correlation_id) VALUES($1,$2,$3,$4)", uu.UUID.String(), uu.Short, uu.Long, uu.CorrelationID)
 
 		if err != nil {
 			var pgErr *pgconn.PgError
@@ -94,7 +86,7 @@ func (d *DBURLs) Resolve(ctx context.Context, shortURL string) (*url.URL, error)
 	var rows *sql.Rows
 
 	rows, err := d.db.QueryContext(ctx,
-		"SELECT * FROM shorten WHERE short_url=$1", shortURL)
+		"SELECT uuid, original_url, short_url, correlation_id FROM shorten WHERE short_url=$1", shortURL)
 
 	if err != nil {
 		return nil, err
@@ -130,7 +122,7 @@ func (d *DBURLs) Ping() bool {
 func (d *DBURLs) getDuplicate(ctx context.Context, originalURL, correlationID string) (*url.URL, error) {
 
 	row := d.db.QueryRowContext(ctx,
-		"SELECT * FROM shorten WHERE original_url = $1 AND correlation_id = $2", originalURL, correlationID)
+		"SELECT uuid, original_url, short_url, correlation_id FROM shorten WHERE original_url = $1 AND correlation_id = $2", originalURL, correlationID)
 
 	var URL url.URL
 
