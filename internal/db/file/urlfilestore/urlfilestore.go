@@ -5,24 +5,18 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"os"
 	"sync"
+
+	"github.com/URL_shortener/internal/app/url"
 )
 
-//var _ url.URLStore = &fileURLs{}
-
-type URL struct {
-	UUID  string `json:"uuid"`
-	Short string `json:"short_url"`
-	Long  string `json:"original_url"`
-}
+var _ url.URLStore = &fileURLs{}
 
 type fileURLs struct {
 	sync.Mutex
-	file        *os.File
-	m           map[string]URL
-	currentUUID uint32
+	file *os.File
+	m    map[string]url.URL
 }
 
 func NewFileURLs(filename string) (*fileURLs, error) {
@@ -33,14 +27,13 @@ func NewFileURLs(filename string) (*fileURLs, error) {
 		return nil, err
 	}
 
-	m := make(map[string]URL)
-	var curUUID uint32
+	m := make(map[string]url.URL)
 
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
 
-		var URLData URL
+		var URLData url.URL
 		err := json.Unmarshal(scanner.Bytes(), &URLData)
 
 		if err != nil {
@@ -48,10 +41,9 @@ func NewFileURLs(filename string) (*fileURLs, error) {
 		}
 
 		m[URLData.Short] = URLData
-		curUUID++
 	}
 
-	f := fileURLs{file: file, m: m, currentUUID: curUUID}
+	f := fileURLs{file: file, m: m}
 
 	return &f, nil
 }
@@ -60,7 +52,7 @@ func (f *fileURLs) Close() error {
 	return f.file.Close()
 }
 
-func (f *fileURLs) Shortening(ctx context.Context, shortURL, longURL string) error {
+func (f *fileURLs) Shortening(ctx context.Context, u []url.URL) error {
 
 	f.Lock()
 	defer f.Unlock()
@@ -71,27 +63,27 @@ func (f *fileURLs) Shortening(ctx context.Context, shortURL, longURL string) err
 	default:
 	}
 
-	f.currentUUID++
-	u := URL{
-		UUID:  fmt.Sprintf("%d", f.currentUUID),
-		Short: shortURL,
-		Long:  longURL}
+	for _, uu := range u {
+		data, err := json.Marshal(&uu)
+		if err != nil {
+			return err
+		}
 
-	data, err := json.Marshal(&u)
-	if err != nil {
-		return err
+		data = append(data, '\n')
+
+		f.m[uu.Short] = uu
+
+		_, err = f.file.Write(data)
+		if err != nil {
+			return err
+		}
 	}
 
-	data = append(data, '\n')
-
-	f.m[u.Short] = u
-
-	_, err = f.file.Write(data)
-	return err
+	return nil
 
 }
 
-func (f *fileURLs) Resolve(ctx context.Context, shortURL string) (*URL, error) {
+func (f *fileURLs) Resolve(ctx context.Context, shortURL string) (*url.URL, error) {
 
 	f.Lock()
 	defer f.Unlock()
@@ -107,4 +99,8 @@ func (f *fileURLs) Resolve(ctx context.Context, shortURL string) (*URL, error) {
 		return &u, nil
 	}
 	return nil, sql.ErrNoRows
+}
+
+func (f *fileURLs) Ping() bool {
+	return true
 }
