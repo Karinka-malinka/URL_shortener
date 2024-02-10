@@ -9,7 +9,7 @@ import (
 )
 
 type URL struct {
-	UUID          uuid.UUID `json:"uuid"`
+	UUID          uuid.UUID `json:"uuid,omitempty"`
 	Short         string    `json:"short_url"`
 	Long          string    `json:"original_url"`
 	CorrelationID string    `json:"correlation_id,omitempty"`

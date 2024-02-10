@@ -8,7 +8,7 @@ import (
 	"github.com/URL_shortener/internal/app/url"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 var _ url.URLStore = &DBURLs{}
@@ -21,23 +21,25 @@ type DBURLs struct {
 
 func NewDB(ctx context.Context, ps string) (*DBURLs, error) {
 
-	db, err := sql.Open("postgres", ps)
+	db, err := sql.Open("pgx", ps)
 	if err != nil {
 		return nil, err
 	}
 
 	_, err = db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS shorten (
         "uuid" TEXT PRIMARY KEY,
-		"original_url" TEXT UNIQUE,
+		    "original_url" TEXT,
         "short_url" TEXT,
-		"correlation_id" TEXT
+		"correlation_id" TEXT,
+		UNIQUE (original_url, correlation_id)
       )`)
 
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = db.ExecContext(ctx, "CREATE INDEX IF NOT EXISTS ix_shorten_original_url ON shorten (original_url)")
+	_, err = db.ExecContext(ctx, "CREATE INDEX IF NOT EXISTS ix_original_url ON shorten (original_url)")
+
 	if err != nil {
 		return nil, err
 	}
@@ -61,23 +63,18 @@ func (d *DBURLs) Shortening(ctx context.Context, u []url.URL) error {
 
 	for _, uu := range u {
 
-		stmt, err := tx.PrepareContext(ctx,
-			"INSERT INTO shorten (uuid, original_url, short_url, correlation_id) VALUES($1,$2,$3,$4) ON CONFLICT (original_url) DO NOTHING")
+		_, err = tx.ExecContext(ctx, "INSERT INTO shorten (uuid, short_url, original_url, correlation_id) VALUES($1,$2,$3,$4)", uu.UUID.String(), uu.Short, uu.Long, uu.CorrelationID)
 
 		if err != nil {
-			return err
-		}
-
-		defer stmt.Close()
-
-		_, err = stmt.ExecContext(ctx, uu.UUID.String(), uu.Long, uu.Short, uu.CorrelationID)
-
-		if err != nil {
-			// проверяем, что ошибка сигнализирует о потенциальном нарушении целостности данных
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
-				return ErrConflict
+				exURL, err := d.getDuplicate(ctx, uu.Long, uu.CorrelationID)
+				if err != nil {
+					return err
+				}
+				return NewErrorConflict(err, *exURL)
 			}
+
 			return err
 		}
 	}
@@ -91,7 +88,7 @@ func (d *DBURLs) Resolve(ctx context.Context, shortURL string) (*url.URL, error)
 	var rows *sql.Rows
 
 	rows, err := d.db.QueryContext(ctx,
-		"SELECT * FROM shorten WHERE short_url=$1", shortURL)
+		"SELECT uuid, original_url, short_url, correlation_id FROM shorten WHERE short_url=$1", shortURL)
 
 	if err != nil {
 		return nil, err
@@ -122,4 +119,18 @@ func (d *DBURLs) Ping() bool {
 	}
 
 	return true
+}
+
+func (d *DBURLs) getDuplicate(ctx context.Context, originalURL, correlationID string) (*url.URL, error) {
+
+	row := d.db.QueryRowContext(ctx,
+		"SELECT uuid, original_url, short_url, correlation_id FROM shorten WHERE original_url = $1 AND correlation_id = $2", originalURL, correlationID)
+
+	var URL url.URL
+
+	if err := row.Scan(&URL.UUID, &URL.Long, &URL.Short, &URL.CorrelationID); err != nil {
+		return nil, err
+	}
+
+	return &URL, nil
 }

@@ -81,7 +81,6 @@ func (rt *Router) ShortURL(c echo.Context) error {
 		}
 
 		shortURL, err := rt.urls.Shortening(c.Request().Context(), string(body))
-		urlShort := rt.cfg.BaseShortAddr + "/" + shortURL
 
 		if err != nil {
 			if errors.Is(err, urldbstore.ErrConflict) {
@@ -104,6 +103,10 @@ func (rt *Router) ShortURL(c echo.Context) error {
 		}
 		return c.String(http.StatusCreated, result)
 	case err := <-errc:
+		var errConflict *urldbstore.ErrConflict
+		if errors.As(err, &errConflict) {
+			return c.String(http.StatusConflict, rt.cfg.BaseShortAddr+"/"+errConflict.URL.Short)
+		}
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	case <-c.Request().Context().Done():
 		return nil
@@ -145,13 +148,13 @@ func (rt *Router) ShortURLJSON(c echo.Context) error {
 		if originalURL != "" {
 
 			shortURL, err := rt.urls.Shortening(c.Request().Context(), originalURL)
+
 			if err != nil {
 				errc <- err
 				return err
 			}
 
 			urlShort := rt.cfg.BaseShortAddr + "/" + shortURL
-
 			ca <- urlShort
 			return nil
 		}
@@ -169,6 +172,13 @@ func (rt *Router) ShortURLJSON(c echo.Context) error {
 		}
 		return c.JSON(http.StatusCreated, data)
 	case err := <-errc:
+		var errConflict *urldbstore.ErrConflict
+		if errors.As(err, &errConflict) {
+			data := map[string]interface{}{
+				"result": rt.cfg.BaseShortAddr + "/" + errConflict.URL.Short,
+			}
+			return c.JSON(http.StatusConflict, data)
+		}
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	case <-c.Request().Context().Done():
 		return nil
