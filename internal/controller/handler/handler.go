@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"fmt"
+
 	"github.com/URL_shortener/internal/app/userapp"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -20,6 +22,7 @@ func GetUserID(c echo.Context) (uuid.UUID, error) {
 		u := u.(*jwt.Token)
 		claims := u.Claims.(*userapp.JWTCustomClaims)
 		userID = claims.UserID
+		return userID, nil
 	} else {
 		u := c.Get("userID").(uuid.UUID)
 		if u != uuid.Nil {
@@ -27,5 +30,5 @@ func GetUserID(c echo.Context) (uuid.UUID, error) {
 		}
 	}
 
-	return userID, nil
+	return uuid.Nil, fmt.Errorf("no token")
 }

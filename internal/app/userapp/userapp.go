@@ -79,9 +79,9 @@ func (ua *Users) UpdateToken(ctx context.Context, accessToken string, cfg config
 	return user, nil
 }
 
-func (u *Users) GetUserURLs(ctx context.Context, userID string) ([]urlapp.URL, error) {
+func (ua *Users) GetUserURLs(ctx context.Context, userID string) ([]urlapp.URL, error) {
 
-	sURL, err := u.userStore.GetUserURLs(ctx, userID)
+	sURL, err := ua.userStore.GetUserURLs(ctx, userID)
 
 	if err != nil {
 		return nil, fmt.Errorf("read long url: %w", err)

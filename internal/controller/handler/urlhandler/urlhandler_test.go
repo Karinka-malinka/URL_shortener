@@ -15,6 +15,7 @@ import (
 	"github.com/URL_shortener/internal/app/urlapp"
 	"github.com/URL_shortener/internal/db/file/urlfilestore"
 	"github.com/URL_shortener/internal/logger"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
@@ -107,6 +108,7 @@ func TestURLHandler_ShortURL_ResolveURL_file(t *testing.T) {
 	req.Header.Set(echo.HeaderContentType, echo.MIMETextHTML)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
+	c.Set("userID", uuid.New())
 
 	urlst, err := urlfilestore.NewFileURLs("/tmp/shorturldb.json")
 	if err != nil {
