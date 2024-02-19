@@ -8,15 +8,15 @@ import (
 	"os"
 	"sync"
 
-	"github.com/URL_shortener/internal/app/url"
+	"github.com/URL_shortener/internal/app/urlapp"
 )
 
-var _ url.URLStore = &fileURLs{}
+var _ urlapp.URLStore = &fileURLs{}
 
 type fileURLs struct {
 	sync.Mutex
 	file *os.File
-	m    map[string]url.URL
+	m    map[string]urlapp.URL
 }
 
 func NewFileURLs(filename string) (*fileURLs, error) {
@@ -27,13 +27,13 @@ func NewFileURLs(filename string) (*fileURLs, error) {
 		return nil, err
 	}
 
-	m := make(map[string]url.URL)
+	m := make(map[string]urlapp.URL)
 
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
 
-		var URLData url.URL
+		var URLData urlapp.URL
 		err := json.Unmarshal(scanner.Bytes(), &URLData)
 
 		if err != nil {
@@ -48,11 +48,7 @@ func NewFileURLs(filename string) (*fileURLs, error) {
 	return &f, nil
 }
 
-func (f *fileURLs) Close() error {
-	return f.file.Close()
-}
-
-func (f *fileURLs) Shortening(ctx context.Context, u []url.URL) error {
+func (f *fileURLs) Shortening(ctx context.Context, u []urlapp.URL) error {
 
 	f.Lock()
 	defer f.Unlock()
@@ -83,7 +79,7 @@ func (f *fileURLs) Shortening(ctx context.Context, u []url.URL) error {
 
 }
 
-func (f *fileURLs) Resolve(ctx context.Context, shortURL string) (*url.URL, error) {
+func (f *fileURLs) Resolve(ctx context.Context, shortURL string) (*urlapp.URL, error) {
 
 	f.Lock()
 	defer f.Unlock()

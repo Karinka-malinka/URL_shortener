@@ -5,27 +5,23 @@ import (
 	"database/sql"
 	"sync"
 
-	"github.com/URL_shortener/internal/app/url"
+	"github.com/URL_shortener/internal/app/urlapp"
 )
 
-var _ url.URLStore = &URLs{}
+var _ urlapp.URLStore = &URLs{}
 
 type URLs struct {
 	sync.Mutex
-	m map[string]url.URL
+	m map[string]urlapp.URL
 }
 
 func NewURLs() *URLs {
 	return &URLs{
-		m: make(map[string]url.URL),
+		m: make(map[string]urlapp.URL),
 	}
 }
 
-func (adr *URLs) Close() error {
-	return nil
-}
-
-func (adr *URLs) Shortening(ctx context.Context, u []url.URL) error {
+func (adr *URLs) Shortening(ctx context.Context, u []urlapp.URL) error {
 	adr.Lock()
 	defer adr.Unlock()
 
@@ -41,7 +37,7 @@ func (adr *URLs) Shortening(ctx context.Context, u []url.URL) error {
 	return nil
 }
 
-func (adr *URLs) Resolve(ctx context.Context, shortURL string) (*url.URL, error) {
+func (adr *URLs) Resolve(ctx context.Context, shortURL string) (*urlapp.URL, error) {
 	adr.Lock()
 	defer adr.Unlock()
 
