@@ -18,7 +18,9 @@ import (
 	"github.com/URL_shortener/internal/db/base/urldbstore"
 	"github.com/URL_shortener/internal/db/base/userdbstore"
 	"github.com/URL_shortener/internal/db/file/urlfilestore"
+	"github.com/URL_shortener/internal/db/file/userfilestore"
 	"github.com/URL_shortener/internal/db/mem/urlmemstore"
+	"github.com/URL_shortener/internal/db/mem/usermemstore"
 	"github.com/URL_shortener/internal/logger"
 )
 
@@ -40,6 +42,7 @@ func main() {
 	var registeredHandlers []handler.Handler
 
 	urlst = urlmemstore.NewURLs()
+	userst = usermemstore.NewUserStore()
 
 	if cfg.DatabaseDSN != "" {
 
@@ -54,6 +57,11 @@ func main() {
 
 	} else if cfg.FileStoragePath != "" {
 		urlst, err = urlfilestore.NewFileURLs(cfg.FileStoragePath)
+		if err != nil {
+			logger.Log.Fatal(err.Error())
+		}
+
+		userst, err = userfilestore.NewFileUsers("/tmp/user.json")
 		if err != nil {
 			logger.Log.Fatal(err.Error())
 		}
