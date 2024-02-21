@@ -39,11 +39,10 @@ func (d *URLStore) Shortening(ctx context.Context, u []urlapp.URL) error {
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
-				exURL, err := d.getDuplicate(ctx, uu.Long, uu.CorrelationID)
-				if err != nil {
-					return err
+				exURL, isdupl := d.getDuplicate(ctx, uu.Long, uu.CorrelationID)
+				if isdupl {
+					return NewErrorConflict(err, *exURL)
 				}
-				return NewErrorConflict(err, *exURL)
 			}
 
 			return err
@@ -53,7 +52,7 @@ func (d *URLStore) Shortening(ctx context.Context, u []urlapp.URL) error {
 	return tx.Commit()
 }
 
-func (d *URLStore) getDuplicate(ctx context.Context, originalURL, correlationID string) (*urlapp.URL, error) {
+func (d *URLStore) getDuplicate(ctx context.Context, originalURL, correlationID string) (*urlapp.URL, bool) {
 
 	row := d.db.QueryRowContext(ctx,
 		"SELECT uuid, original_url, short_url, correlation_id FROM shorten WHERE original_url = $1 AND correlation_id = $2", originalURL, correlationID)
@@ -61,10 +60,10 @@ func (d *URLStore) getDuplicate(ctx context.Context, originalURL, correlationID 
 	var URL urlapp.URL
 
 	if err := row.Scan(&URL.UUID, &URL.Long, &URL.Short, &URL.CorrelationID); err != nil {
-		return nil, err
+		return nil, false
 	}
 
-	return &URL, nil
+	return &URL, true
 }
 
 func (d *URLStore) Resolve(ctx context.Context, shortURL string) (*urlapp.URL, error) {

@@ -69,7 +69,7 @@ func (u *URLs) PingDB() bool {
 	return u.adrstore.Ping()
 }
 
-func (u *URLs) Batch(ctx context.Context, sURL []URL) (*[]URL, error) {
+func (u *URLs) Batch(ctx context.Context, sURL []URL, userID uuid.UUID) (*[]URL, error) {
 
 	var nu []URL
 
@@ -82,6 +82,7 @@ func (u *URLs) Batch(ctx context.Context, sURL []URL) (*[]URL, error) {
 			Short:         shortURL,
 			Long:          bu.Long,
 			CorrelationID: bu.CorrelationID,
+			UserID:        userID,
 		})
 	}
 

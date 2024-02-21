@@ -181,6 +181,11 @@ func (lh *URLHandler) Batch(c echo.Context) error {
 
 	defer rBody.Close()
 
+	userID, err := handler.GetUserID(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized)
+	}
+
 	if rBody == http.NoBody {
 		return echo.NewHTTPError(http.StatusBadRequest, "No body")
 	}
@@ -201,7 +206,7 @@ func (lh *URLHandler) Batch(c echo.Context) error {
 			return err
 		}
 
-		shortURL, err := lh.URLApp.Batch(c.Request().Context(), inputData)
+		shortURL, err := lh.URLApp.Batch(c.Request().Context(), inputData, userID)
 		if err != nil {
 			errc <- err
 			return err
