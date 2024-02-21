@@ -66,6 +66,10 @@ func NewRouter(cfg config.ConfigData, handlers []handler.Handler, userApp *usera
 
 func (rt *Router) TokenRefresher(c echo.Context, cfg config.ConfigData) error {
 
+	if c.Path() == "/api/user/urls" {
+		c.Response().Writer.WriteHeader(http.StatusUnauthorized)
+	}
+
 	cookie, err := c.Cookie("access_token")
 
 	var user *userapp.User
