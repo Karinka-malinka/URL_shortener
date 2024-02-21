@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"sync"
 
 	"github.com/URL_shortener/cmd/config"
 	"github.com/URL_shortener/internal/app/urlapp"
@@ -78,14 +77,10 @@ func main() {
 	appRouter := router.NewRouter(*cfg, registeredHandlers, userApp)
 	srv := server.NewServer(cfg.RunAddr, appRouter.Echo)
 
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	defer wg.Done()
-
 	go srv.Start()
 
 	<-ctx.Done()
 	srv.Stop()
 	cancel()
-	wg.Wait()
+
 }
