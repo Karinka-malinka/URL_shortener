@@ -98,3 +98,7 @@ func (d *UserStore) Read(ctx context.Context, userID string) (*userapp.User, err
 func (d *UserStore) GetUserURLs(ctx context.Context, userID string) ([]urlapp.URL, error) {
 	return nil, fmt.Errorf("method is not available")
 }
+
+func (d *UserStore) DeleteUserURLs(ctx context.Context, shotrURLs []string, userID string) error {
+	return fmt.Errorf("method is not available")
+}

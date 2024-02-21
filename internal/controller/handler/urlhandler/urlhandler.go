@@ -239,13 +239,17 @@ func (lh *URLHandler) ResolveURL(c echo.Context) error {
 
 	uri := c.Param("id")
 
-	originalURL, err := lh.URLApp.Resolve(c.Request().Context(), uri)
+	URL, err := lh.URLApp.Resolve(c.Request().Context(), uri)
 
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	c.Redirect(http.StatusTemporaryRedirect, originalURL)
+	if URL.DeletedFlag {
+		return c.JSON(http.StatusGone, "url delete")
+	}
+
+	c.Redirect(http.StatusTemporaryRedirect, URL.Long)
 	return nil
 }
 

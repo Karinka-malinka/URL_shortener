@@ -3,9 +3,12 @@ package userdbstore
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/URL_shortener/internal/app/urlapp"
 	"github.com/URL_shortener/internal/app/userapp"
+	"github.com/URL_shortener/internal/logger"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -44,17 +47,18 @@ func (d *UserStore) Read(ctx context.Context, userID string) (*userapp.User, err
 
 	var rows *sql.Rows
 
-	rows, err := d.db.QueryContext(ctx,
-		"SELECT uuid FROM users WHERE uuid = $1", userID)
-
-	/*qb := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+	qb := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
 
 	query, args, err := qb.Select("uuid").
 		From("users").
 		Where(squirrel.Eq{"uuid": userID}).
 		ToSql()
 
-	rows, err = d.db.QueryContext(ctx, query, args)*/
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err = d.db.QueryContext(ctx, query, args...)
 
 	if err != nil {
 		return nil, err
@@ -82,19 +86,18 @@ func (d *UserStore) GetUserURLs(ctx context.Context, userID string) ([]urlapp.UR
 
 	var rows *sql.Rows
 
-	// Create a query builder instance
-	/*qb := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+	qb := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
 
 	query, args, err := qb.Select("short_url", "original_url").
 		From("shorten").
-		InnerJoin("users ON users.uuid = shorten.user_id").
-		Where(squirrel.Eq{"users.uuid": userID}).
+		Where(squirrel.Eq{"user_id": userID}).
 		ToSql()
 
-	*/
+	if err != nil {
+		return nil, err
+	}
 
-	rows, err := d.db.QueryContext(ctx,
-		"SELECT short_url, original_url FROM shorten INNER JOIN users ON users.uuid = shorten.user_id WHERE users.uuid = $1", userID)
+	rows, err = d.db.QueryContext(ctx, query, args...)
 
 	if err != nil {
 		return nil, err
@@ -119,4 +122,35 @@ func (d *UserStore) GetUserURLs(ctx context.Context, userID string) ([]urlapp.UR
 	}
 
 	return URLs, nil
+}
+
+func (d *UserStore) DeleteUserURLs(ctx context.Context, shotrURLs []string, userID string) error {
+
+	queryBuilder := squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+
+	query, args, err := queryBuilder.Update("shorten").
+		Set("is_deleted", true).
+		Where(squirrel.Eq{"short_url": shotrURLs}).
+		Where(squirrel.Eq{"user_id": userID}).
+		ToSql()
+
+	if err != nil {
+		return err
+	}
+
+	result, err := d.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	logger.Log.Infof("Delete %d urls", rowsAffected)
+	if len(shotrURLs) != int(rowsAffected) {
+		return fmt.Errorf("not successful deletion")
+	}
+	return nil
 }

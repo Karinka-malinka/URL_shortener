@@ -14,6 +14,7 @@ type URL struct {
 	Long          string    `json:"original_url,omitempty" db:"original_url"`
 	CorrelationID string    `json:"correlation_id,omitempty" db:"correlation_id"`
 	UserID        uuid.UUID `json:"-"`
+	DeletedFlag   bool      `json:"is_deleted" db:"is_deleted"`
 }
 
 // инверсия зависимостей к базе данных
@@ -54,15 +55,15 @@ func (u *URLs) Shortening(ctx context.Context, longURL string, userID uuid.UUID)
 	return shortURL, nil
 }
 
-func (u *URLs) Resolve(ctx context.Context, shortURL string) (string, error) {
+func (u *URLs) Resolve(ctx context.Context, shortURL string) (*URL, error) {
 
 	strURL, err := u.adrstore.Resolve(ctx, shortURL)
 
 	if err != nil {
-		return "", fmt.Errorf("read long url: %w", err)
+		return nil, fmt.Errorf("read long url: %w", err)
 	}
 
-	return strURL.Long, nil
+	return strURL, nil
 }
 
 func (u *URLs) PingDB() bool {

@@ -17,6 +17,7 @@ type User struct {
 type UserStore interface {
 	Create(ctx context.Context, user User) error
 	Read(ctx context.Context, userID string) (*User, error)
+	DeleteUserURLs(ctx context.Context, shortURLs []string, userID string) error
 	GetUserURLs(ctx context.Context, userID string) ([]urlapp.URL, error)
 }
 
@@ -88,4 +89,15 @@ func (ua *Users) GetUserURLs(ctx context.Context, userID string) ([]urlapp.URL, 
 	}
 
 	return sURL, nil
+}
+
+func (ua *Users) DeleteUserURLs(ctx context.Context, shortURL []string, userID string) error {
+
+	err := ua.userStore.DeleteUserURLs(ctx, shortURL, userID)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

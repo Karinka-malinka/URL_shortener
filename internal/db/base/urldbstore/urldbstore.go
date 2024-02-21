@@ -71,7 +71,7 @@ func (d *URLStore) Resolve(ctx context.Context, shortURL string) (*urlapp.URL, e
 	var rows *sql.Rows
 
 	rows, err := d.db.QueryContext(ctx,
-		"SELECT uuid, original_url, short_url, correlation_id FROM shorten WHERE short_url=$1", shortURL)
+		"SELECT uuid, original_url, short_url, correlation_id, is_deleted FROM shorten WHERE short_url=$1", shortURL)
 
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func (d *URLStore) Resolve(ctx context.Context, shortURL string) (*urlapp.URL, e
 
 	for rows.Next() {
 
-		if err = rows.Scan(&URL.UUID, &URL.Long, &URL.Short, &URL.CorrelationID); err != nil {
+		if err = rows.Scan(&URL.UUID, &URL.Long, &URL.Short, &URL.CorrelationID, &URL.DeletedFlag); err != nil {
 			return nil, err
 		}
 	}

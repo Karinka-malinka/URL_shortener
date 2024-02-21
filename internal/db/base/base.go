@@ -34,6 +34,7 @@ func NewDB(ctx context.Context, ps string) (*PostgresDatabase, error) {
 		"original_url" TEXT,
         "short_url" TEXT,
 		"correlation_id" TEXT,
+		"is_deleted" BOOLEAN DEFAULT false,
 		UNIQUE (original_url, correlation_id),
 		FOREIGN KEY (user_id) REFERENCES users(uuid)
       )`)
