@@ -11,8 +11,7 @@ func parseFlags(cfg *config.ConfigData) {
 
 	flag.StringVar(&cfg.RunAddr, "a", "localhost:8080", "address and port to run server")
 	flag.StringVar(&cfg.BaseShortAddr, "b", "http://localhost:8080", "base address of the resulting shortened URL")
-	//flag.StringVar(&cfg.FileStoragePath, "f", "/tmp/short-url-db.json", "file storage url")
-	flag.StringVar(&cfg.FileStoragePath, "f", "", "file storage url")
+	flag.StringVar(&cfg.FileStoragePath, "f", "/tmp/short-url-db.json", "file storage url")
 	flag.StringVar(&cfg.DatabaseDSN, "d", "", "adress connect database")
 	flag.StringVar(&cfg.SecretKeyForAccessToken, "kat", "X7k3OFLHXq", "secret key for access token")
 	flag.StringVar(&cfg.ValidityPeriodAccessToken, "vpat", "5", "the validity period of the access token in minutes")
