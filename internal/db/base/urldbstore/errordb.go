@@ -4,15 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/URL_shortener/internal/app/url"
+	"github.com/URL_shortener/internal/app/urlapp"
 )
 
 type ErrConflict struct {
 	Err error
-	URL url.URL
+	URL urlapp.URL
 }
 
-func NewErrorConflict(err error, URL url.URL) error {
+func NewErrorConflict(err error, URL urlapp.URL) error {
 	return &ErrConflict{Err: err, URL: URL}
 }
 

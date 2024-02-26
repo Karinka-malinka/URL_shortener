@@ -1,4 +1,4 @@
-package url
+package urlapp
 
 import (
 	"context"
@@ -9,10 +9,12 @@ import (
 )
 
 type URL struct {
-	UUID          uuid.UUID `json:"uuid,omitempty"`
-	Short         string    `json:"short_url"`
-	Long          string    `json:"original_url,omitempty"`
-	CorrelationID string    `json:"correlation_id"`
+	UUID          uuid.UUID `json:"uuid,omitempty" db:"uuid"`
+	Short         string    `json:"short_url" db:"short_url"`
+	Long          string    `json:"original_url,omitempty" db:"original_url"`
+	CorrelationID string    `json:"correlation_id,omitempty" db:"correlation_id"`
+	UserID        uuid.UUID `json:"-"`
+	DeletedFlag   bool      `json:"is_deleted" db:"is_deleted"`
 }
 
 // инверсия зависимостей к базе данных
@@ -20,7 +22,6 @@ type URLStore interface {
 	Shortening(ctx context.Context, u []URL) error
 	Resolve(ctx context.Context, shortURL string) (*URL, error)
 	Ping() bool
-	Close() error
 }
 
 type URLs struct {
@@ -33,16 +34,17 @@ func NewURLs(adrstore URLStore) *URLs {
 	}
 }
 
-func (u *URLs) Shortening(ctx context.Context, longURL string) (string, error) {
+func (u *URLs) Shortening(ctx context.Context, longURL string, userID uuid.UUID) (string, error) {
 
 	shortURL := generateShortURL()
 
 	var nu []URL
 
 	nu = append(nu, URL{
-		UUID:  uuid.New(),
-		Short: shortURL,
-		Long:  longURL,
+		UUID:   uuid.New(),
+		Short:  shortURL,
+		Long:   longURL,
+		UserID: userID,
 	})
 
 	err := u.adrstore.Shortening(ctx, nu)
@@ -53,26 +55,22 @@ func (u *URLs) Shortening(ctx context.Context, longURL string) (string, error) {
 	return shortURL, nil
 }
 
-func (u *URLs) Resolve(ctx context.Context, shortURL string) (string, error) {
+func (u *URLs) Resolve(ctx context.Context, shortURL string) (*URL, error) {
 
 	strURL, err := u.adrstore.Resolve(ctx, shortURL)
 
 	if err != nil {
-		return "", fmt.Errorf("read long url: %w", err)
+		return nil, fmt.Errorf("read long url: %w", err)
 	}
 
-	return strURL.Long, nil
+	return strURL, nil
 }
 
 func (u *URLs) PingDB() bool {
 	return u.adrstore.Ping()
 }
 
-func (u *URLs) CloseDB() {
-	u.adrstore.Close()
-}
-
-func (u *URLs) Batch(ctx context.Context, sURL []URL) (*[]URL, error) {
+func (u *URLs) Batch(ctx context.Context, sURL []URL, userID uuid.UUID) (*[]URL, error) {
 
 	var nu []URL
 
@@ -85,6 +83,7 @@ func (u *URLs) Batch(ctx context.Context, sURL []URL) (*[]URL, error) {
 			Short:         shortURL,
 			Long:          bu.Long,
 			CorrelationID: bu.CorrelationID,
+			UserID:        userID,
 		})
 	}
 
